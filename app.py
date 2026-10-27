@@ -148,9 +148,11 @@ liste_chantiers = list(st.session_state.chantiers.keys())
 if not liste_chantiers:
   st.sidebar.warning("⚠️ Aucun chantier actif. Créez-en un pour commencer.")
   nouveau_c_init = st.sidebar.text_input(
-      "Nouveau Chantier", placeholder="Ex: ZAC Nord - VRD"
+      "Nouveau Chantier",
+      placeholder="Ex: ZAC Nord - VRD",
+      key="input_nouveau_chantier_init",
   )
-  if st.sidebar.button("Créer le chantier"):
+  if st.sidebar.button("Créer le chantier", key="btn_creer_chantier_init"):
     if nouveau_c_init:
       st.session_state.chantiers[nouveau_c_init] = {
           "historique_chat": [],
@@ -172,12 +174,14 @@ if not liste_chantiers:
   st.stop()
 
 chantier_actif = st.sidebar.selectbox(
-    "📍 Chantier en cours", options=liste_chantiers
+    "📍 Chantier en cours", options=liste_chantiers, key="select_chantier_actif"
 )
 
 with st.sidebar.expander("➕ Créer un autre chantier"):
-  autre_c = st.text_input("Nom du chantier", placeholder="Nom...")
-  if st.button("Ajouter"):
+  autre_c = st.text_input(
+      "Nom du chantier", placeholder="Nom...", key="input_autre_chantier"
+  )
+  if st.sidebar.button("Ajouter", key="btn_ajouter_autre_chantier"):
     if autre_c:
       st.session_state.chantiers[autre_c] = {
           "historique_chat": [],
@@ -249,6 +253,7 @@ with tab_dash:
       "Notes instantanées (sauvegarde automatique)",
       value=notes_actuelles,
       height=90,
+      key="textarea_notes_rapides",
   )
   if nouveau_texte_notes != notes_actuelles:
     data_c["notes_rapides"] = nouveau_texte_notes
@@ -295,16 +300,29 @@ with tab_plan:
     st.markdown("### 🗓️ Tableau Interactif des Tâches")
     if not data_c["planning_taches"]:
       data_c["planning_taches"] = [
-          {"Tâche / Lot": "Réseaux secs (AEP / EP)", "Durée": "3 semaines", "Période": "S1 à S3"},
-          {"Tâche / Lot": "Préparation pose bordures", "Durée": "2 semaines", "Période": "S4 à S5"},
+          {
+              "Tâche / Lot": "Réseaux secs (AEP / EP)",
+              "Durée": "3 semaines",
+              "Période": "S1 à S3",
+          },
+          {
+              "Tâche / Lot": "Préparation pose bordures",
+              "Durée": "2 semaines",
+              "Période": "S4 à S5",
+          },
       ]
 
     df_planning = pd.DataFrame(data_c["planning_taches"])
     edited_df = st.data_editor(
-        df_planning, num_rows="dynamic", use_container_width=True
+        df_planning,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="editor_planning_taches",
     )
 
-    if st.button("Enregistrer les modifications du planning"):
+    if st.button(
+        "Enregistrer les modifications du planning", key="btn_save_planning"
+    ):
       data_c["planning_taches"] = edited_df.to_dict("records")
       st.success("✅ Planning mis à jour avec succès !")
 
@@ -313,8 +331,9 @@ with tab_plan:
     desc_alea = st.text_input(
         "Décris un imprévu (ex: Intervention mur en S3)",
         placeholder="Ex: Mur à reprendre en semaine 3",
+        key="input_desc_alea",
     )
-    if st.button("Consulter l'IA pour l'impact de l'aléa"):
+    if st.button("Consulter l'IA pour l'impact de l'aléa", key="btn_submit_alea"):
       if desc_alea:
         with st.spinner("Analyse de l'impact..."):
           res_ia_planning = ia_engine.generer_planning_ia(
@@ -331,9 +350,11 @@ with tab_plan:
     st.markdown("### 👷 Référentiel des Compagnons")
     col_c1, col_c2 = st.columns([3, 1])
     nouveau_comp = col_c1.text_input(
-        "Nom et spécialité du compagnon", placeholder="Ex: Thomas (Pelliste)"
+        "Nom et spécialité du compagnon",
+        placeholder="Ex: Thomas (Pelliste)",
+        key="input_nouveau_compagnon",
     )
-    if col_c2.button("Ajouter"):
+    if col_c2.button("Ajouter", key="btn_ajouter_compagnon"):
       if nouveau_comp:
         data_c["compagnons"].append(nouveau_comp)
         st.rerun()
@@ -341,19 +362,23 @@ with tab_plan:
     for idx, c in enumerate(data_c.get("compagnons", [])):
       col_n, col_d = st.columns([4, 1])
       col_n.markdown(f"• **{c}**")
-      if col_d.button("Supprimer", key=f"del_c_{idx}"):
+      if col_d.button("Supprimer", key=f"del_compagnon_{idx}"):
         data_c["compagnons"].pop(idx)
         st.rerun()
 
   with sub_pl3:
     st.markdown("### 🛠️ Organisation des Sous-Ateliers")
     with st.expander("➕ Créer un sous-atelier"):
-      nom_at = st.text_input("Nom de l'atelier (ex: Équipe Réseau)")
-      tache_at = st.text_input("Tâche liée")
-      membres_at = st.multiselect(
-          "Compagnons affectés", options=data_c.get("compagnons", [])
+      nom_at = st.text_input(
+          "Nom de l'atelier (ex: Équipe Réseau)", key="input_nom_atelier"
       )
-      if st.button("Enregistrer l'atelier"):
+      tache_at = st.text_input("Tâche liée", key="input_tache_atelier")
+      membres_at = st.multiselect(
+          "Compagnons affectés",
+          options=data_c.get("compagnons", []),
+          key="multi_membres_atelier",
+      )
+      if st.button("Enregistrer l'atelier", key="btn_enregistrer_atelier"):
         if nom_at:
           data_c["ateliers"].append({
               "nom": nom_at,
@@ -372,7 +397,7 @@ with tab_plan:
           </div>""",
           unsafe_allow_html=True,
       )
-      if st.button("Supprimer l'atelier", key=f"del_at_{idx}"):
+      if st.button("Supprimer l'atelier", key=f"del_atelier_item_{idx}"):
         data_c["ateliers"].pop(idx)
         st.rerun()
 
@@ -385,15 +410,23 @@ with tab_prep:
   col_p1, col_p2 = st.columns(2)
   with col_p1:
     type_t = st.text_input(
-        "Type de travaux", placeholder="Ex: Réseau EU Ø300"
+        "Type de travaux",
+        placeholder="Ex: Réseau EU Ø300",
+        key="input_prep_type_travaux",
     )
     contraintes_t = st.text_area(
-        "Contraintes terrain", placeholder="Ex: Nappe phréatique"
+        "Contraintes terrain",
+        placeholder="Ex: Nappe phréatique",
+        key="input_prep_contraintes",
     )
   with col_p2:
-    moyens_t = st.text_area("Moyens disponibles", placeholder="Ex: Pelle 18t")
+    moyens_t = st.text_area(
+        "Moyens disponibles",
+        placeholder="Ex: Pelle 18t",
+        key="input_prep_moyens",
+    )
 
-  if st.button("Lancer l'analyse technique IA"):
+  if st.button("Lancer l'analyse technique IA", key="btn_lancer_prep_ia"):
     if type_t:
       with st.spinner("Analyse..."):
         res = ia_engine.preparer_chantier(type_t, contraintes_t, moyens_t)
@@ -403,7 +436,7 @@ with tab_prep:
   for idx, p in enumerate(reversed(data_c["preparations"])):
     with st.expander(f"📋 {p['titre']}"):
       st.markdown(p["contenu"])
-      if st.button("Épingler au Tableau de Bord", key=f"ping_{idx}"):
+      if st.button("Épingler au Tableau de Bord", key=f"ping_prep_item_{idx}"):
         data_c["projet_infos"] = f"<b>Projet :</b> {p['titre']}"
         st.success("Épinglé !")
 
@@ -437,11 +470,15 @@ with tab_stock:
   with sub_s2:
     with st.expander("➕ Ajouter un matériau"):
       c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
-      n_mat = c1.text_input("Nom")
-      req_m = c2.number_input("Prévu", value=50.0)
-      rec_m = c3.number_input("Reçu", value=0.0)
-      uni_m = c4.selectbox("Unité", ["mL", "m3", "Tonnes", "Unités", "m2"])
-      if st.button("Enregistrer"):
+      n_mat = c1.text_input("Nom", key="input_stock_nom_mat")
+      req_m = c2.number_input("Prévu", value=50.0, key="num_stock_prevu")
+      rec_m = c3.number_input("Reçu", value=0.0, key="num_stock_recu")
+      uni_m = c4.selectbox(
+          "Unité",
+          ["mL", "m3", "Tonnes", "Unités", "m2"],
+          key="select_stock_unite",
+      )
+      if st.button("Enregistrer", key="btn_enregistrer_materiau_stock"):
         if n_mat:
           data_c["stocks"][n_mat] = {
               "requis": req_m,
@@ -454,12 +491,14 @@ with tab_stock:
     for item, vals in list(data_c["stocks"].items()):
       with st.expander(f"📦 {item}"):
         nr = st.number_input(
-            "Reçu cumulé", value=float(vals["recu"]), key=f"r_{item}"
+            "Reçu cumulé", value=float(vals["recu"]), key=f"r_stock_{item}"
         )
-        np = st.number_input("Posé", value=float(vals["pose"]), key=f"p_{item}")
+        np = st.number_input(
+            "Posé", value=float(vals["pose"]), key=f"p_stock_{item}"
+        )
         data_c["stocks"][item]["recu"] = nr
         data_c["stocks"][item]["pose"] = np
-        if st.button("Supprimer", key=f"del_mat_{item}"):
+        if st.button("Supprimer", key=f"del_stock_item_{item}"):
           del data_c["stocks"][item]
           st.rerun()
 
@@ -476,7 +515,9 @@ with tab_calc:
   ])
 
   with sub_c1:
-    v_pl = st.number_input("Volume en place (m³)", value=200.0)
+    v_pl = st.number_input(
+        "Volume en place (m³)", value=200.0, key="calc_terr_v_pl"
+    )
     v_fois = v_pl * 1.2
     st.markdown(
         f"<div class='card'>Volume foisonné : <b>{v_fois:.1f} m³</b></div>",
@@ -485,8 +526,10 @@ with tab_calc:
     st.bar_chart({"Volume": {"En Place": v_pl, "Foisonné": v_fois}})
 
   with sub_c2:
-    surf = st.number_input("Surface (m²)", value=1500.0)
-    ep = st.number_input("Épaisseur (cm)", value=6.0)
+    surf = st.number_input(
+        "Surface (m²)", value=1500.0, key="calc_enrobe_surf"
+    )
+    ep = st.number_input("Épaisseur (cm)", value=6.0, key="calc_enrobe_ep")
     tonnage = surf * (ep / 100.0) * 2.4
     st.markdown(
         f"<div class='card'>Tonnage estimé : <b>{tonnage:.1f} Tonnes</b></div>",
@@ -495,8 +538,12 @@ with tab_calc:
     st.bar_chart({"Tonnage": {"Total (t)": tonnage}})
 
   with sub_c3:
-    s_rab = st.number_input("Surface rabotage (m²)", value=1000.0)
-    p_rab = st.number_input("Profondeur (cm)", value=5.0)
+    s_rab = st.number_input(
+        "Surface rabotage (m²)", value=1000.0, key="calc_rab_surf"
+    )
+    p_rab = st.number_input(
+        "Profondeur (cm)", value=5.0, key="calc_rab_prof"
+    )
     v_fr = s_rab * (p_rab / 100.0)
     st.markdown(
         f"<div class='card'>Volume fraiseat : <b>{v_fr:.1f} m³</b></div>",
@@ -511,10 +558,12 @@ with tab_mat:
   st.subheader("🚜 Référentiel Matériel & Coûts")
 
   with st.expander("➕ Ajouter un engin"):
-    n_e = st.text_input("Nom")
-    u_e = st.text_input("Usage")
-    c_e = st.number_input("Coût horaire (€/h)", value=65.0)
-    if st.button("Ajouter"):
+    n_e = st.text_input("Nom", key="input_materiel_nom")
+    u_e = st.text_input("Usage", key="input_materiel_usage")
+    c_e = st.number_input(
+        "Coût horaire (€/h)", value=65.0, key="num_materiel_cout"
+    )
+    if st.button("Ajouter", key="btn_ajouter_materiel_catalogue"):
       if n_e:
         st.session_state.catalog_engins.append(
             {"nom": n_e, "usage": u_e, "cout": c_e}
@@ -523,7 +572,7 @@ with tab_mat:
 
   for idx, engin in enumerate(st.session_state.catalog_engins):
     with st.expander(f"⚙️ {engin['nom']} ({engin['cout']} €/h)"):
-      if st.button("Supprimer", key=f"del_eng_{idx}"):
+      if st.button("Supprimer", key=f"del_engin_catalogue_{idx}"):
         st.session_state.catalog_engins.pop(idx)
         st.rerun()
 
@@ -537,7 +586,7 @@ with tab_ai:
     with st.chat_message(m["role"]):
       st.markdown(m["content"])
 
-  user_q = st.chat_input("Pose ta question...")
+  user_q = st.chat_input("Pose ta question...", key="chat_input_assistant")
   if user_q:
     data_c["historique_chat"].append({"role": "user", "content": user_q})
     with st.chat_message("user"):
