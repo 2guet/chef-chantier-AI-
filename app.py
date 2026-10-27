@@ -27,7 +27,74 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-API_KEY = os.getenv("MISTRAL_API_KEY", "mstrl_vMSBfYr10D2KBnRWjRLVPS0gLsspL7Yg_0q5fTA")
+
+# --- MOTEUR IA INTÉGRÉ DIRECTEMENT ---
+class UltimateTPAgent:
+
+  def __init__(self, api_key):
+    self.api_key = api_key
+    self.api_url = "https://api.mistral.ai/v1/chat/completions"
+
+  def _call(self, system_prompt, user_msg):
+    if not self.api_key or self.api_key == "METS_TA_CLE_MISTRAL_ICI":
+      return "⚠️ Erreur : Clé API Mistral non configurée."
+
+    headers = {
+        "Authorization": f"Bearer {self.api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "mistral-small-latest",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
+        ],
+        "temperature": 0.3,
+    }
+    try:
+      res = requests.post(
+          self.api_url, headers=headers, json=payload, timeout=30
+      )
+      if res.status_code == 200:
+        return res.json()["choices"][0]["message"]["content"]
+      return f"Erreur API ({res.status_code}): {res.text}"
+    except Exception as e:
+      return f"Erreur réseau : {str(e)}"
+
+  def simuler_atelier(self, ressources, tache):
+    sys = (
+        "Tu es un ingénieur méthodes et conducteur de travaux TP chevronné."
+        " Analyse les ressources et la tâche pour fournir : 1. Les cadences et"
+        " rendements journaliers prévisionnels. 2. Le dimensionnement exact de"
+        " l'atelier. 3. Les points de vigilance technique, coactivité et"
+        " sécurité."
+    )
+    return self._call(sys, f"Ressources : {ressources}\nTâche : {tache}")
+
+  def structurer_rapport(self, brut):
+    sys = (
+        "Tu es un assistant de gestion de chantier TP. Rédige un rapport de fin"
+        " de journée professionnel structuré ainsi : 1. Météo & Conditions, 2."
+        " Avancement réel vs prévisionnel, 3. Aléas ou pannes, 4. Reste à faire."
+    )
+    return self._call(sys, brut)
+
+  def analyser_document_ou_photo(self, nom_fichier, description_contexte):
+    sys = (
+        "Tu es un expert technique en travaux publics. Analyse ce document ou"
+        " cette photo transmise sur le chantier, identifie les éléments clés"
+        " (risques, cotes, contraintes techniques, observations) et fais un"
+        " résumé pro pour le chef de chantier."
+    )
+    return self._call(
+        sys,
+        f"Fichier joint : {nom_fichier}\nContexte/Notes du chef de chantier"
+        f" : {description_contexte}",
+    )
+
+
+# Récupération de la clé API (via les secrets Streamlit ou variable d'env)
+API_KEY = os.getenv("MISTRAL_API_KEY", "METS_TA_CLE_MISTRAL_ICI")
 ai = UltimateTPAgent(API_KEY)
 
 st.title("🏗️ Chef de Chantier AI")
