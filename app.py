@@ -1,27 +1,32 @@
 import os
 import requests
 import streamlit as st
+import pandas as pd
 
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(
     page_title="Chef de Chantier TP - Pro OS",
     page_icon="🏗️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
-# Design "Dark Mode Industriel Haut de Gamme" (Anthracite, Acier, touches Jaune Chantier)
+# Design "Best-Seller BTP" : Dark mode épuré, typographie moderne, finitions industrielles
 st.markdown(
     """
     <style>
-    .main { background-color: #0b0f19; padding: 1.5rem; color: #f8fafc; }
-    .stButton button { width: 100%; border-radius: 8px; font-weight: 600; height: 3em; background-color: #f59e0b; color: #0b0f19; border: none; }
+    .main { background-color: #0b0f19; padding: 1rem; color: #f8fafc; }
+    .stButton button { width: 100%; border-radius: 8px; font-weight: 600; height: 2.8em; background-color: #f59e0b; color: #0b0f19; border: none; }
     .stButton button:hover { background-color: #d97706; }
     .card { background-color: #111827; padding: 20px; border-radius: 12px; border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); margin-bottom: 15px; }
     .alert-card { background-color: #450a0a; border: 1px solid #991b1b; padding: 15px; border-radius: 8px; color: #f87171; margin-bottom: 15px; font-weight: 600; }
     .success-card { background-color: #064e3b; border: 1px solid #065f46; padding: 15px; border-radius: 8px; color: #34d399; margin-bottom: 15px; font-weight: 600; }
     h1, h2, h3 { color: #ffffff !important; }
     p, span, label { color: #9ca3af !important; }
+    /* Style pour les onglets principaux */
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: #111827; padding: 6px; border-radius: 10px; }
+    .stTabs [data-baseweb="tab"] { height: 40px; border-radius: 6px; color: #9ca3af; font-weight: 600; }
+    .stTabs [aria-selected="true"] { background-color: #f59e0b !important; color: #0b0f19 !important; }
     </style>
 """,
     unsafe_allow_html=True,
@@ -132,10 +137,10 @@ if "catalog_engins" not in st.session_state:
   ]
 
 # ==========================================
-# GESTION DES CHANTIERS & SÉCURITÉ (OBLIGATION DE CRÉER)
+# BARRE LATÉRALE : GESTION DES CHANTIERS UNIQUEMENT
 # ==========================================
 st.sidebar.title("🏗️ CHEF DE CHANTIER OS")
-st.sidebar.caption("Interface Pro Terrain")
+st.sidebar.caption("Pilotage Terrain Haute Performance")
 st.sidebar.markdown("---")
 
 liste_chantiers = list(st.session_state.chantiers.keys())
@@ -154,7 +159,7 @@ if not liste_chantiers:
           "projet_infos": "Aucune note validée.",
           "achats_urgents": "RAS",
           "notes_rapides": "",
-          "planning_taches": [],  # Totalement vide, modifiable à volonté
+          "planning_taches": [],
           "compagnons": [],
           "ateliers": [],
       }
@@ -162,12 +167,12 @@ if not liste_chantiers:
   st.title("🏗️ Bienvenue sur votre Assistant Chef de Chantier")
   st.info(
       "👈 Veuillez créer votre premier chantier dans le menu latéral pour"
-      " accéder aux modules."
+      " déverrouiller l'application."
   )
   st.stop()
 
 chantier_actif = st.sidebar.selectbox(
-    "📍 Sélectionner un chantier", options=liste_chantiers
+    "📍 Chantier en cours", options=liste_chantiers
 )
 
 with st.sidebar.expander("➕ Créer un autre chantier"):
@@ -187,34 +192,44 @@ with st.sidebar.expander("➕ Créer un autre chantier"):
       }
       st.rerun()
 
-st.sidebar.markdown("---")
-module = st.sidebar.radio(
-    "🧭 Navigation Principale",
-    [
-        "⚡ Tableau de Bord",
-        "📅 Planning & Sous-Ateliers",
-        "🛠️ Préparation & Méthodes",
-        "📦 Stocks & Récapitulatif BDL",
-        "🧮 Calculs & Ateliers Métier",
-        "🚜 Parc & Matériel",
-        "💬 Assistant Expert Terrain",
-    ],
-)
-
 data_c = st.session_state.chantiers[chantier_actif]
+
+# En-tête principal épuré
+st.title(f"🏗️ {chantier_actif}")
+st.markdown("---")
+
+# ==========================================
+# NAVIGATION PRINCIPALE PAR ONGLETS HAUT (STYLE BEST-SELLER)
+# ==========================================
+(
+    tab_dash,
+    tab_plan,
+    tab_prep,
+    tab_stock,
+    tab_calc,
+    tab_mat,
+    tab_ai,
+) = st.tabs([
+    "⚡ Tableau de Bord",
+    "📅 Planning & Ateliers",
+    "🛠️ Préparation IA",
+    "📦 Stocks & BDL",
+    "🧮 Calculs & Ateliers",
+    "🚜 Matériel & Coûts",
+    "💬 Assistant Expert",
+])
 
 # ==========================================
 # 1. TABLEAU DE BORD
 # ==========================================
-if module == "⚡ Tableau de Bord":
-  st.title(f"⚡ Tableau de Bord : {chantier_actif}")
-  st.markdown("---")
+with tab_dash:
+  st.subheader("⚡ Vue Synthétique & Flux Chantier")
 
   col_info1, col_info2 = st.columns(2)
   with col_info1:
     st.markdown(
         f"""<div class='card'>
-        <b>📋 Résumé du Projet Épinglé :</b><br>
+        <b>📋 Projet Épinglé :</b><br>
         {data_c.get('projet_infos', 'Aucune note injectée.')}
         </div>""",
         unsafe_allow_html=True,
@@ -222,8 +237,8 @@ if module == "⚡ Tableau de Bord":
   with col_info2:
     st.markdown(
         f"""<div class='card'>
-        <b>🛒 À commander / Pré-requis :</b><br>
-        {data_c.get('achats_urgents', 'Aucun pré-requis spécifié.')}
+        <b>🛒 Pré-requis / Achats :</b><br>
+        {data_c.get('achats_urgents', 'Aucun pré-requis.')}
         </div>""",
         unsafe_allow_html=True,
     )
@@ -233,7 +248,7 @@ if module == "⚡ Tableau de Bord":
   nouveau_texte_notes = st.text_area(
       "Notes instantanées (sauvegarde automatique)",
       value=notes_actuelles,
-      height=100,
+      height=90,
   )
   if nouveau_texte_notes != notes_actuelles:
     data_c["notes_rapides"] = nouveau_texte_notes
@@ -265,11 +280,10 @@ if module == "⚡ Tableau de Bord":
     )
 
 # ==========================================
-# 2. PLANNING & SOUS-ATELIERS (ÉDITABLE)
+# 2. PLANNING & SOUS-ATELIERS
 # ==========================================
-elif module == "📅 Planning & Sous-Ateliers":
-  st.title(f"📅 Pilotage du Planning & Dispatching : {chantier_actif}")
-  st.markdown("---")
+with tab_plan:
+  st.subheader("📅 Pilotage du Planning & Dispatching Équipe")
 
   sub_pl1, sub_pl2, sub_pl3 = st.tabs([
       "📊 Éditeur de Planning & Aléas",
@@ -278,25 +292,18 @@ elif module == "📅 Planning & Sous-Ateliers":
   ])
 
   with sub_pl1:
-    st.markdown("### 🗓️ Modification directe des tâches du planning")
-    st.write(
-        "Modifie directement les cases du tableau ci-dessous, ajoute des"
-        " lignes ou supprime-les à ta guise !"
-    )
-
-    # Initialisation d'un format de données par défaut vide si absent
+    st.markdown("### 🗓️ Tableau Interactif des Tâches")
     if not data_c["planning_taches"]:
       data_c["planning_taches"] = [
           {"Tâche / Lot": "Réseaux secs (AEP / EP)", "Durée": "3 semaines", "Période": "S1 à S3"},
           {"Tâche / Lot": "Préparation pose bordures", "Durée": "2 semaines", "Période": "S4 à S5"},
       ]
 
-    # Utilisation d'un tableau interactif éditable par l'utilisateur
-    import pandas as pd
     df_planning = pd.DataFrame(data_c["planning_taches"])
-    edited_df = st.data_editor(df_planning, num_rows="dynamic", use_container_width=True)
-    
-    # Sauvegarde automatique des modifications du tableau
+    edited_df = st.data_editor(
+        df_planning, num_rows="dynamic", use_container_width=True
+    )
+
     if st.button("Enregistrer les modifications du planning"):
       data_c["planning_taches"] = edited_df.to_dict("records")
       st.success("✅ Planning mis à jour avec succès !")
@@ -313,7 +320,10 @@ elif module == "📅 Planning & Sous-Ateliers":
           res_ia_planning = ia_engine.generer_planning_ia(
               str(data_c["planning_taches"]), desc_alea
           )
-          st.markdown(f"<div class='card'>{res_ia_planning}</div>", unsafe_allow_html=True)
+          st.markdown(
+              f"<div class='card'>{res_ia_planning}</div>",
+              unsafe_allow_html=True,
+          )
       else:
         st.warning("Précise l'aléa.")
 
@@ -340,10 +350,16 @@ elif module == "📅 Planning & Sous-Ateliers":
     with st.expander("➕ Créer un sous-atelier"):
       nom_at = st.text_input("Nom de l'atelier (ex: Équipe Réseau)")
       tache_at = st.text_input("Tâche liée")
-      membres_at = st.multiselect("Compagnons affectés", options=data_c.get("compagnons", []))
+      membres_at = st.multiselect(
+          "Compagnons affectés", options=data_c.get("compagnons", [])
+      )
       if st.button("Enregistrer l'atelier"):
         if nom_at:
-          data_c["ateliers"].append({"nom": nom_at, "membres": membres_at, "tache": tache_at})
+          data_c["ateliers"].append({
+              "nom": nom_at,
+              "membres": membres_at,
+              "tache": tache_at,
+          })
           st.success("Atelier créé !")
           st.rerun()
 
@@ -361,16 +377,19 @@ elif module == "📅 Planning & Sous-Ateliers":
         st.rerun()
 
 # ==========================================
-# 3. PRÉPARATION & MÉTHODES
+# 3. PRÉPARATION IA
 # ==========================================
-elif module == "🛠️ Préparation & Méthodes":
-  st.title("🛠️ Préparation de Chantier & Méthodes")
-  st.markdown("---")
+with tab_prep:
+  st.subheader("🛠️ Préparation de Chantier & Méthodes IA")
 
   col_p1, col_p2 = st.columns(2)
   with col_p1:
-    type_t = st.text_input("Type de travaux", placeholder="Ex: Réseau EU Ø300")
-    contraintes_t = st.text_area("Contraintes terrain", placeholder="Ex: Nappe phréatique")
+    type_t = st.text_input(
+        "Type de travaux", placeholder="Ex: Réseau EU Ø300"
+    )
+    contraintes_t = st.text_area(
+        "Contraintes terrain", placeholder="Ex: Nappe phréatique"
+    )
   with col_p2:
     moyens_t = st.text_area("Moyens disponibles", placeholder="Ex: Pelle 18t")
 
@@ -391,9 +410,8 @@ elif module == "🛠️ Préparation & Méthodes":
 # ==========================================
 # 4. STOCKS & BDL
 # ==========================================
-elif module == "📦 Stocks & Récapitulatif BDL":
-  st.title("📦 Suivi des Stocks & BDL")
-  st.markdown("---")
+with tab_stock:
+  st.subheader("📦 Suivi des Stocks & BDL")
 
   sub_s1, sub_s2 = st.tabs(["📊 Tableau Global", "⚙️ Saisie BDL"])
 
@@ -425,12 +443,19 @@ elif module == "📦 Stocks & Récapitulatif BDL":
       uni_m = c4.selectbox("Unité", ["mL", "m3", "Tonnes", "Unités", "m2"])
       if st.button("Enregistrer"):
         if n_mat:
-          data_c["stocks"][n_mat] = {"requis": req_m, "recu": rec_m, "pose": 0.0, "unite": uni_m}
+          data_c["stocks"][n_mat] = {
+              "requis": req_m,
+              "recu": rec_m,
+              "pose": 0.0,
+              "unite": uni_m,
+          }
           st.rerun()
 
     for item, vals in list(data_c["stocks"].items()):
       with st.expander(f"📦 {item}"):
-        nr = st.number_input("Reçu cumulé", value=float(vals["recu"]), key=f"r_{item}")
+        nr = st.number_input(
+            "Reçu cumulé", value=float(vals["recu"]), key=f"r_{item}"
+        )
         np = st.number_input("Posé", value=float(vals["pose"]), key=f"p_{item}")
         data_c["stocks"][item]["recu"] = nr
         data_c["stocks"][item]["pose"] = np
@@ -439,46 +464,61 @@ elif module == "📦 Stocks & Récapitulatif BDL":
           st.rerun()
 
 # ==========================================
-# 5. CALCULS
+# 5. CALCULS & ATELIERS
 # ==========================================
-elif module == "🧮 Calculs & Ateliers Métier":
-  st.title("🧮 Centre de Calculs")
-  st.markdown("---")
-  sub_c1, sub_c2, sub_c3 = st.tabs(["🚛 Terrassement", "🛣️ Enrobés", "⚙️ Rabotage"])
+with tab_calc:
+  st.subheader("🧮 Centre de Calculs Métier")
+
+  sub_c1, sub_c2, sub_c3 = st.tabs([
+      "🚛 Terrassement",
+      "🛣️ Enrobés",
+      "⚙️ Rabotage",
+  ])
 
   with sub_c1:
     v_pl = st.number_input("Volume en place (m³)", value=200.0)
     v_fois = v_pl * 1.2
-    st.markdown(f"<div class='card'>Volume foisonné : <b>{v_fois:.1f} m³</b></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='card'>Volume foisonné : <b>{v_fois:.1f} m³</b></div>",
+        unsafe_allow_html=True,
+    )
     st.bar_chart({"Volume": {"En Place": v_pl, "Foisonné": v_fois}})
 
   with sub_c2:
     surf = st.number_input("Surface (m²)", value=1500.0)
     ep = st.number_input("Épaisseur (cm)", value=6.0)
     tonnage = surf * (ep / 100.0) * 2.4
-    st.markdown(f"<div class='card'>Tonnage estimé : <b>{tonnage:.1f} Tonnes</b></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='card'>Tonnage estimé : <b>{tonnage:.1f} Tonnes</b></div>",
+        unsafe_allow_html=True,
+    )
     st.bar_chart({"Tonnage": {"Total (t)": tonnage}})
 
   with sub_c3:
     s_rab = st.number_input("Surface rabotage (m²)", value=1000.0)
     p_rab = st.number_input("Profondeur (cm)", value=5.0)
     v_fr = s_rab * (p_rab / 100.0)
-    st.markdown(f"<div class='card'>Volume fraiseat : <b>{v_fr:.1f} m³</b></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='card'>Volume fraiseat : <b>{v_fr:.1f} m³</b></div>",
+        unsafe_allow_html=True,
+    )
     st.bar_chart({"Fraisage": {"Volume (m3)": v_fr}})
 
 # ==========================================
-# 6. PARC & MATÉRIEL
+# 6. MATÉRIEL & COÛTS
 # ==========================================
-elif module == "🚜 Parc & Matériel":
-  st.title("🚜 Référentiel Matériel")
-  st.markdown("---")
+with tab_mat:
+  st.subheader("🚜 Référentiel Matériel & Coûts")
+
   with st.expander("➕ Ajouter un engin"):
     n_e = st.text_input("Nom")
     u_e = st.text_input("Usage")
     c_e = st.number_input("Coût horaire (€/h)", value=65.0)
     if st.button("Ajouter"):
       if n_e:
-        st.session_state.catalog_engins.append({"nom": n_e, "usage": u_e, "cout": c_e})
+        st.session_state.catalog_engins.append(
+            {"nom": n_e, "usage": u_e, "cout": c_e}
+        )
         st.rerun()
 
   for idx, engin in enumerate(st.session_state.catalog_engins):
@@ -488,11 +528,11 @@ elif module == "🚜 Parc & Matériel":
         st.rerun()
 
 # ==========================================
-# 7. ASSISTANT
+# 7. ASSISTANT EXPERT
 # ==========================================
-elif module == "💬 Assistant Expert Terrain":
-  st.title("💬 Assistant Expert Terrain")
-  st.markdown("---")
+with tab_ai:
+  st.subheader("💬 Assistant Expert Terrain")
+
   for m in data_c["historique_chat"]:
     with st.chat_message(m["role"]):
       st.markdown(m["content"])
