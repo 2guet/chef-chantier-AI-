@@ -32,8 +32,8 @@ class TPExpertEngine:
     self.api_url = "https://api.mistral.ai/v1/chat/completions"
 
   def _call(self, system_prompt, messages_history):
-    if not self.api_key or self.api_key == "mstrl_vMSBfYr10D2KBnRWjRLVPS0gLsspL7Yg_0q5fTA":
-      return "⚠️ Erreur : Clé API Mistral non configurée dans les paramètres."
+    if not self.api_key:
+      return "⚠️ Erreur : Clé API non définie."
 
     headers = {
         "Authorization": f"Bearer {self.api_key}",
@@ -84,13 +84,18 @@ class TPExpertEngine:
         " fichier transmis et donne ton diagnostic technique et tes"
         " recommandations."
     )
-    return self._call(sys, [{"role": "user", "content": user_msg}])
+    user_msg = (
+        f"Nom du document : {nom_fichier}\nContexte/Question du chef de"
+        f" chantier : {description_contexte}"
+    )
+    return self._call(sys, [{"role": "user", "content": user_msg}] )
 
 
-API_KEY = os.getenv("MISTRAL_API_KEY", "METS_TA_CLE_MISTRAL_ICI")
+# --- CLÉ API INTÉGRÉE EN DUR ---
+API_KEY = "mstrl_vMSBfYr10D2KBnRWjRLVPS0gLsspL7Yg_0q5fTA"
 ia_engine = TPExpertEngine(API_KEY)
 
-# --- INITIALISATION DE LA SESSION STATE (Global et dynamique) ---
+# --- INITIALISATION DE LA SESSION STATE ---
 if "chantiers" not in st.session_state:
   st.session_state.chantiers = {
       "Réseau EU & EP ZAC Nord": {
@@ -114,7 +119,6 @@ if "chantiers" not in st.session_state:
       }
   }
 
-# Catalogue matériel dynamique stocké en session pour pouvoir l'enrichir/le modifier sans code
 if "catalog_engins" not in st.session_state:
   st.session_state.catalog_engins = [
       {
@@ -272,7 +276,7 @@ elif menu == "💬 Assistant TP (Chat & Prob.)":
         )
 
 # ==========================================
-# 4. STOCKS & MATÉRIAUX (Avec Suppression intégrée !)
+# 4. STOCKS & MATÉRIAUX
 # ==========================================
 elif menu == "📦 Stocks & Matériaux":
   st.header(f"📦 Gestion des Stocks : {chantier_actif}")
@@ -333,7 +337,6 @@ elif menu == "📦 Stocks & Matériaux":
         else:
           st.success("✅ Stock suffisant.")
 
-        # Bouton de suppression propre du matériau
         if c_del.button("🗑️ Supprimer", key=f"del_mat_{item}"):
           del data_chantier["stocks"][item]
           st.success(f"Matériau {item} supprimé avec succès !")
@@ -391,7 +394,7 @@ elif menu == "📐 Calculs Cubatures & Comp.":
       st.info("Prévoir 4 à 6 passes croisées.")
 
 # ==========================================
-# 6. CATALOGUE MATÉRIEL (Entièrement gérable depuis l'UI !)
+# 6. CATALOGUE MATÉRIEL
 # ==========================================
 elif menu == "🚜 Catalogue Matériel":
   st.header("🚜 Catalogue Engins & Coûts Horaires")
@@ -420,9 +423,6 @@ elif menu == "🚜 Catalogue Matériel":
   for idx, item in enumerate(st.session_state.catalog_engins):
     with st.expander(f"⚙️ {item['nom']} ({item['cout']} €/h)"):
       st.write(f"**Usage :** {item['usage']}")
-
-      # Modification directe ou suppression
-      c_del = st.columns(1)[0]
       if st.button(f"🗑️ Supprimer l'engin", key=f"del_engin_{idx}"):
         st.session_state.catalog_engins.pop(idx)
         st.success("Engin supprimé !")
