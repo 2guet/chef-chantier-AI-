@@ -36,7 +36,7 @@ class UltimateTPAgent:
     self.api_url = "https://api.mistral.ai/v1/chat/completions"
 
   def _call(self, system_prompt, user_msg):
-    if not self.api_key or self.api_key == "METS_TA_CLE_MISTRAL_ICI":
+    if not self.api_key or self.api_key == "mstrl_vMSBfYr10D2KBnRWjRLVPS0gLsspL7Yg_0q5fTA":
       return "⚠️ Erreur : Clé API Mistral non configurée."
 
     headers = {
