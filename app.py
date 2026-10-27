@@ -104,7 +104,7 @@ ia_engine = TPExpertEngine(API_KEY)
 # --- INITIALISATION DE LA SESSION STATE ---
 if "chantiers" not in st.session_state:
   st.session_state.chantiers = {
-      "Réseau EU & EP ZAC Nord": {
+      "Assistant TP": {
           "historique_chat": [],
           "documents": [],
           "rapports": [],
@@ -259,7 +259,6 @@ with tab_prep:
     if type_travaux:
       with st.spinner("Analyse technique en cours..."):
         res = ia_engine.preparer_chantier(type_travaux, contraintes, moyens)
-        # Stockage automatique dans l'historique du chantier
         data_chantier["preparations"].append({
             "titre": type_travaux,
             "contenu": res,
