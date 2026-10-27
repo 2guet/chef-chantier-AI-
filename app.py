@@ -7,7 +7,7 @@ st.set_page_config(
     page_title="Chef de Chantier AI - Pro Edition",
     page_icon="🏗️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 st.markdown(
@@ -40,7 +40,7 @@ class TPExpertEngine:
         "Content-Type": "application/json",
     }
     payload = {
-        "model": "mistral-tiny",  # Modèle allégé pour éviter les saturations 429
+        "model": "mistral-tiny",
         "messages": [{"role": "system", "content": system_prompt}]
         + messages_history,
         "temperature": 0.2,
@@ -108,6 +108,7 @@ if "chantiers" not in st.session_state:
           "historique_chat": [],
           "documents": [],
           "rapports": [],
+          "preparations": [],
           "stocks": {
               "Tuyau PEHD Ø300": {
                   "requis": 390,
@@ -149,9 +150,9 @@ if "catalog_engins" not in st.session_state:
       },
   ]
 
-# --- NAVIGATION LATÉRALE ---
+# --- SÉLECTION DU CHANTIER ACTIF DANS LA BARRE LATÉRALE ---
 st.sidebar.title("🏗️ Chef de Chantier AI")
-st.sidebar.caption("L'assistant terrain ultime TP")
+st.sidebar.caption("Gestion globale")
 
 chantier_actif = st.sidebar.selectbox(
     "📍 Chantier actif", options=list(st.session_state.chantiers.keys())
@@ -165,33 +166,34 @@ if st.sidebar.button("Créer le chantier") and nouveau_chantier:
       "historique_chat": [],
       "documents": [],
       "rapports": [],
+      "preparations": [],
       "stocks": {},
   }
   st.rerun()
 
-st.sidebar.divider()
-
-menu = st.sidebar.radio(
-    "Menu Navigation",
-    [
-        "📊 Dashboard & Alertes",
-        "🛠️ Préparation & Méthodes",
-        "💬 Assistant TP (Chat & Prob.)",
-        "📦 Stocks & Matériaux",
-        "📐 Calculs Cubatures & Comp.",
-        "🚜 Catalogue Matériel",
-        "📁 Plans & Photos",
-        "🌙 Bilan de Journée",
-    ],
-)
-
 data_chantier = st.session_state.chantiers[chantier_actif]
+
+st.title(f"🏗️ {chantier_actif}")
+
+# --- NAVIGATION PRINCIPALE PAR ONGLETS (LARGE ET ERGONOMIQUE) ---
+tab_dash, tab_prep, tab_chat, tab_stock, tab_calc, tab_cat, tab_doc, tab_bilan = (
+    st.tabs([
+        "📊 Dashboard",
+        "🛠️ Préparation",
+        "💬 Assistant IA",
+        "📦 Stocks",
+        "📐 Calculs TP",
+        "🚜 Catalogue",
+        "📁 Documents",
+        "🌙 Bilan Soir",
+    ])
+)
 
 # ==========================================
 # 1. DASHBOARD & ALERTES
 # ==========================================
-if menu == "📊 Dashboard & Alertes":
-  st.header(f"📊 Tableau de Bord : {chantier_actif}")
+with tab_dash:
+  st.subheader("Tableau de bord & Alertes de stock")
 
   alertes = []
   for item, vals in data_chantier["stocks"].items():
@@ -225,22 +227,26 @@ if menu == "📊 Dashboard & Alertes":
         unsafe_allow_html=True,
     )
 
-  col1, col2, col3 = st.columns(3)
-  col1.metric("Documents & Plans", len(data_chantier["documents"]))
-  col2.metric("Rapports rédigés", len(data_chantier["rapports"]))
-  col3.metric("Articles suivis en stock", len(data_chantier["stocks"]))
+  col1, col2, col3, col4 = st.columns(4)
+  col1.metric("Documents", len(data_chantier["documents"]))
+  col2.metric("Rapports", len(data_chantier["rapports"]))
+  col3.metric("Notes Prépa", len(data_chantier["preparations"]))
+  col4.metric("Articles Suivis", len(data_chantier["stocks"]))
 
 # ==========================================
-# 2. PRÉPARATION & MÉTHODES
+# 2. PRÉPARATION DE CHANTIER (AVEC HISTORIQUE)
 # ==========================================
-elif menu == "🛠️ Préparation & Méthodes":
-  st.header(f"🛠️ Préparation de Chantier : {chantier_actif}")
+with tab_prep:
+  st.subheader("🛠️ Préparation de Chantier & Méthodes")
+  st.write(
+      "Soumets un futur projet pour obtenir l'analyse de l'ingénieur méthodes."
+  )
+
   type_travaux = st.text_input(
-      "Type de travaux à réaliser",
-      placeholder="Ex: Pose de réseau d'eau potable PEHD 220",
+      "Type de travaux", placeholder="Ex: Pose de réseau d'eau potable PEHD 220"
   )
   contraintes = st.text_area(
-      "Contraintes spécifiques (Terrain, météo, circulation, réseaux)",
+      "Contraintes (Terrain, météo, circulation, réseaux)",
       placeholder=(
           "Ex: Sol rocheux / présence d'eau / présence réseaux sensibles"
       ),
@@ -253,16 +259,31 @@ elif menu == "🛠️ Préparation & Méthodes":
     if type_travaux:
       with st.spinner("Analyse technique en cours..."):
         res = ia_engine.preparer_chantier(type_travaux, contraintes, moyens)
-        st.markdown("### 📋 Plan d'Attaque & Préconisations :")
+        # Stockage automatique dans l'historique du chantier
+        data_chantier["preparations"].append({
+            "titre": type_travaux,
+            "contenu": res,
+        })
+        st.success("Analyse générée et sauvegardée dans l'historique !")
+        st.markdown("### 📋 Résultat de l'analyse :")
         st.markdown(res)
     else:
       st.warning("Veuillez renseigner le type de travaux.")
 
+  st.divider()
+  st.subheader("📚 Historique des notes de préparation de ce chantier")
+  if not data_chantier["preparations"]:
+    st.write("Aucune note de préparation enregistrée pour l'instant.")
+  else:
+    for idx, prep in enumerate(reversed(data_chantier["preparations"]), 1):
+      with st.expander(f"📋 {prep['titre']}"):
+        st.markdown(prep["contenu"])
+
 # ==========================================
 # 3. ASSISTANT TP (CHAT DIRECT)
 # ==========================================
-elif menu == "💬 Assistant TP (Chat & Prob.)":
-  st.header("💬 Assistant TP - Résolution de Problèmes en Direct")
+with tab_chat:
+  st.subheader("💬 Assistant TP - Résolution de Problèmes en Direct")
   for msg in data_chantier["historique_chat"]:
     with st.chat_message(msg["role"]):
       st.markdown(msg["content"])
@@ -284,26 +305,26 @@ elif menu == "💬 Assistant TP (Chat & Prob.)":
 # ==========================================
 # 4. STOCKS & MATÉRIAUX
 # ==========================================
-elif menu == "📦 Stocks & Matériaux":
-  st.header(f"📦 Gestion des Stocks : {chantier_actif}")
+with tab_stock:
+  st.subheader("📦 Gestion des Stocks & Bons de Livraison")
 
-  st.subheader("➕ Ajouter un matériau au suivi")
-  c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
-  nom_mat = c1.text_input("Nom du matériau (Ex: Regard béton 100x100)")
-  req_mat = c2.number_input("Métré Total Prévu", min_value=0.0, value=50.0)
-  recu_mat = c3.number_input("Reçu sur chantier", min_value=0.0, value=0.0)
-  unite_mat = c4.selectbox("Unité", ["mL", "m3", "Tonnes", "Unités", "m2"])
+  with st.expander("➕ Ajouter un matériau au suivi"):
+    c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
+    nom_mat = c1.text_input("Nom du matériau (Ex: Regard béton)")
+    req_mat = c2.number_input("Métré Total Prévu", min_value=0.0, value=50.0)
+    recu_mat = c3.number_input("Reçu sur chantier", min_value=0.0, value=0.0)
+    unite_mat = c4.selectbox("Unité", ["mL", "m3", "Tonnes", "Unités", "m2"])
 
-  if st.button("Enregistrer le matériau"):
-    if nom_mat:
-      data_chantier["stocks"][nom_mat] = {
-          "requis": req_mat,
-          "recu": recu_mat,
-          "pose": 0.0,
-          "unite": unite_mat,
-      }
-      st.success(f"{nom_mat} ajouté !")
-      st.rerun()
+    if st.button("Enregistrer le matériau"):
+      if nom_mat:
+        data_chantier["stocks"][nom_mat] = {
+            "requis": req_mat,
+            "recu": recu_mat,
+            "pose": 0.0,
+            "unite": unite_mat,
+        }
+        st.success(f"{nom_mat} ajouté !")
+        st.rerun()
 
   st.divider()
   st.subheader("📋 Suivi, Consommation & Suppression")
@@ -351,13 +372,11 @@ elif menu == "📦 Stocks & Matériaux":
 # ==========================================
 # 5. CALCULS CUBATURES & COMPACTAGE
 # ==========================================
-elif menu == "📐 Calculs Cubatures & Comp.":
-  st.header("📐 Calculateur Technique Terrassement")
-  tab_terr, tab_comp = st.tabs(
-      ["🚛 Foisonnement & Camions", "🚜 Ratios de Compactage"]
-  )
+with tab_calc:
+  st.subheader("📐 Calculateur Technique Terrassement")
+  sub_terr, sub_comp = st.tabs(["🚛 Foisonnement & Camions", "🚜 Compactage"])
 
-  with tab_terr:
+  with sub_terr:
     v_en_place = st.number_input(
         "Volume en place (m³)", min_value=1.0, value=100.0
     )
@@ -386,7 +405,7 @@ elif menu == "📐 Calculs Cubatures & Comp.":
     st.success(f"**Volume foisonné :** {v_foisonne:.1f} m³")
     st.info(f"**Rotations nécessaires :** {nb_rotations} camions")
 
-  with tab_comp:
+  with sub_comp:
     epaisseur_couche = st.number_input(
         "Épaisseur couche (cm)", min_value=5, value=20
     )
@@ -402,8 +421,8 @@ elif menu == "📐 Calculs Cubatures & Comp.":
 # ==========================================
 # 6. CATALOGUE MATÉRIEL
 # ==========================================
-elif menu == "🚜 Catalogue Matériel":
-  st.header("🚜 Catalogue Engins & Coûts Horaires")
+with tab_cat:
+  st.subheader("🚜 Catalogue Engins & Coûts Horaires")
 
   with st.expander("➕ Ajouter un nouvel engin au catalogue"):
     nom_engin = st.text_input("Nom de la machine (Ex: Tombereau articulé)")
@@ -437,8 +456,8 @@ elif menu == "🚜 Catalogue Matériel":
 # ==========================================
 # 7. PLANS & PHOTOS
 # ==========================================
-elif menu == "📁 Plans & Photos":
-  st.header(f"📁 Analyse de Documents : {chantier_actif}")
+with tab_doc:
+  st.subheader("📁 Analyse de Documents & Plans")
   fichier = st.file_uploader(
       "Glisser une photo ou un PDF", type=["jpg", "png", "jpeg", "pdf"]
   )
@@ -465,8 +484,8 @@ elif menu == "📁 Plans & Photos":
 # ==========================================
 # 8. BILAN DE JOURNÉE
 # ==========================================
-elif menu == "🌙 Bilan de Journée":
-  st.header(f"🌙 Rapport Journalier : {chantier_actif}")
+with tab_bilan:
+  st.subheader("🌙 Rapport Journalier")
   debrief = st.text_area("Débrief brut de la journée", height=150)
 
   if st.button("Générer le rapport structuré", type="primary"):
