@@ -76,6 +76,19 @@ class TPExpertEngine:
     )
     return self._call(sys, [{"role": "user", "content": user_msg}])
 
+  def generer_planning_ia(self, description_chantier, alea):
+    sys = (
+        "Tu es un conducteur de travaux principal expert en VRD. Génère un"
+        " planning de chantier détaillé par semaines/jours sous forme de"
+        " tableau structuré (Tâche, Durée, Semaine de réalisation, Impact des"
+        " aléas si précisés)."
+    )
+    user_msg = (
+        f"Descriptif / Tâches du chantier : {description_chantier}\nAléa ou"
+        f" modification à intégrer : {alea}"
+    )
+    return self._call(sys, [{"role": "user", "content": user_msg}])
+
   def discuter_probleme(self, historique_chat):
     sys = (
         "Tu es un conducteur de travaux TP chevronné. Tu réponds aux questions"
@@ -138,9 +151,49 @@ if not liste_chantiers:
           "historique_chat": [],
           "preparations": [],
           "stocks": {},
-          "projet_infos": "Aucune note de préparation validée pour l'instant.",
+          "projet_infos": "Aucune note validée.",
           "achats_urgents": "RAS",
           "notes_rapides": "",
+          "planning_taches": [
+              {
+                  "tache": "Réseaux secs (AEP / EP)",
+                  "duree": "3 semaines",
+                  "semaine": "S1 à S3",
+              },
+              {
+                  "tache": "Préparation pose bordures",
+                  "duree": "2 semaines",
+                  "semaine": "S4 à S5",
+              },
+              {
+                  "tache": "Pose de bordures",
+                  "duree": "2 semaines",
+                  "semaine": "S6 à S7",
+              },
+              {
+                  "tache": "Préparation enrobé / GNT",
+                  "duree": "1 semaine",
+                  "semaine": "S8",
+              },
+              {
+                  "tache": "Pose d'enrobés",
+                  "duree": "2 jours",
+                  "semaine": "S9",
+              },
+          ],
+          "compagnons": ["Thomas (Pelliste)", "Marc", "Lucas", "Kevin"],
+          "ateliers": [
+              {
+                  "nom": "Atelier Réseaux & Terrassement",
+                  "membres": ["Thomas (Pelliste)", "Marc"],
+                  "tache_affectee": "Réseaux secs",
+              },
+              {
+                  "nom": "Atelier Finitions & Pose",
+                  "membres": ["Lucas", "Kevin"],
+                  "tache_affectee": "Préparation & Bordures",
+              },
+          ],
       }
       st.rerun()
   st.title("🏗️ Bienvenue sur votre Assistant Chef de Chantier")
@@ -150,12 +203,11 @@ if not liste_chantiers:
   )
   st.stop()
 
-# Sélection obligatoire
+# Sélection obligatoire du chantier actif
 chantier_actif = st.sidebar.selectbox(
     "📍 Sélectionner un chantier", options=liste_chantiers
 )
 
-# Option d'ajout d'un nouveau chantier
 with st.sidebar.expander("➕ Créer un autre chantier"):
   autre_c = st.text_input("Nom du chantier", placeholder="Nom...")
   if st.button("Ajouter"):
@@ -167,6 +219,9 @@ with st.sidebar.expander("➕ Créer un autre chantier"):
           "projet_infos": "Aucune note validée.",
           "achats_urgents": "RAS",
           "notes_rapides": "",
+          "planning_taches": [],
+          "compagnons": [],
+          "ateliers": [],
       }
       st.rerun()
 
@@ -175,6 +230,7 @@ module = st.sidebar.radio(
     "🧭 Navigation Principale",
     [
         "⚡ Tableau de Bord",
+        "📅 Planning & Sous-Ateliers",
         "🛠️ Préparation & Méthodes",
         "📦 Stocks & Récapitulatif BDL",
         "🧮 Calculs & Ateliers Métier",
@@ -186,18 +242,17 @@ module = st.sidebar.radio(
 data_c = st.session_state.chantiers[chantier_actif]
 
 # ==========================================
-# 1. TABLEAU DE BORD (SYNTHÈSE, BLOC NOTES & PASSERELLE)
+# 1. TABLEAU DE BORD (SYNTHÈSE & BLOC NOTES)
 # ==========================================
 if module == "⚡ Tableau de Bord":
   st.title(f"⚡ Tableau de Bord : {chantier_actif}")
   st.markdown("---")
 
-  # Bloc récapitulatif issu de la Préparation
   col_info1, col_info2 = st.columns(2)
   with col_info1:
     st.markdown(
         f"""<div class='card'>
-        <b>📋 Résumé du Futur Projet Validé :</b><br>
+        <b>📋 Résumé du Projet Épinglé :</b><br>
         {data_c.get('projet_infos', 'Aucune note injectée.')}
         </div>""",
         unsafe_allow_html=True,
@@ -205,17 +260,16 @@ if module == "⚡ Tableau de Bord":
   with col_info2:
     st.markdown(
         f"""<div class='card'>
-        <b>🛒 À commander / Pré-requis d'attaque :</b><br>
+        <b>🛒 À commander / Pré-requis :</b><br>
         {data_c.get('achats_urgents', 'Aucun pré-requis spécifié.')}
         </div>""",
         unsafe_allow_html=True,
     )
 
-  # Bloc-notes Rapide Terrain
   st.markdown("### 📝 Bloc-Notes Rapide Terrain")
   notes_actuelles = data_c.get("notes_rapides", "")
   nouveau_texte_notes = st.text_area(
-      "Notes instantanées (sauvegarde automatique en direct)",
+      "Notes instantanées (sauvegarde automatique)",
       value=notes_actuelles,
       height=100,
   )
@@ -224,7 +278,6 @@ if module == "⚡ Tableau de Bord":
 
   st.markdown("---")
   st.markdown("### 🚨 Alertes Stocks & Flux")
-
   alertes = []
   for item, vals in data_c["stocks"].items():
     dispo = vals["recu"] - vals["pose"]
@@ -250,7 +303,157 @@ if module == "⚡ Tableau de Bord":
     )
 
 # ==========================================
-# 2. PRÉPARATION & MÉTHODES (AVEC PASSERELLE DASHBOARD)
+# 2. PLANNING & SOUS-ATELIERS (NOUVEAU MODULE PRO)
+# ==========================================
+elif module == "📅 Planning & Sous-Ateliers":
+  st.title(f"📅 Pilotage du Planning & Dispatching Équipe : {chantier_actif}")
+  st.caption(
+      "Gérez vos tâches, intégrez vos aléas (ex: reprise de mur) et"
+      " répartissez vos compagnons par sous-ateliers."
+  )
+  st.markdown("---")
+
+  # Sous-onglets professionnels pour le planning
+  sub_pl1, sub_pl2, sub_pl3 = st.tabs([
+      "📊 Visualisation & Aléas Planning",
+      "👥 Gestion des Compagnons",
+      "🛠️ Dispatching des Sous-Ateliers",
+  ])
+
+  # --- SOUS-ONGLET 1 : PLANNING & ALÉAS ---
+  with sub_pl1:
+    st.markdown("### 🗓️ Chronogramme des Tâches du Chantier")
+
+    if not data_c.get("planning_taches"):
+      st.info("Aucune tâche enregistrée. Ajoutez-en une ci-dessous.")
+    else:
+      # Affichage sous forme de tableau pro
+      st.dataframe(data_c["planning_taches"], use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("### ⚡ Gestion des Aléas & Réajustement Intelligent")
+    st.write(
+        "Un imprévu sur le terrain ? (Ex: Mur à reprendre en S3, intempéries,"
+        " retard fournisseur). Décrivez l'aléa, l'IA va réajuster le planning."
+    )
+
+    col_a1, col_a2 = st.columns([3, 1])
+    desc_alea = col_a1.text_input(
+        "Description de l'aléa",
+        placeholder="Ex: Intervention reprise de mur imprévue à la 3e semaine",
+    )
+    if col_a2.button("Réajuster le Planning"):
+      if desc_alea:
+        with st.spinner("Recalcul du planning et décalage des tâches..."):
+          texte_taches = str(data_c["planning_taches"])
+          res_ia_planning = ia_engine.generer_planning_ia(
+              texte_taches, desc_alea
+          )
+          st.success("Planning réajusté avec succès !")
+          st.markdown(
+              f"<div class='card'>{res_ia_planning}</div>",
+              unsafe_allow_html=True,
+          )
+      else:
+        st.warning("Veuillez décrire l'aléa.")
+
+    with st.expander("➕ Ajouter manuellement une tâche au planning"):
+      c_t1, c_t2, c_t3 = st.columns([3, 2, 2])
+      nt = c_t1.text_input("Nom de la tâche")
+      dur = c_t2.text_input("Durée (ex: 2 semaines)")
+      sem = c_t3.text_input("Période (ex: S4 à S5)")
+      if st.button("Ajouter la tâche"):
+        if nt:
+          data_c["planning_taches"].append(
+              {"tache": nt, "duree": dur, "semaine": sem}
+          )
+          st.success("Tâche ajoutée !")
+          st.rerun()
+
+  # --- SOUS-ONGLET 2 : COMPAGNONS ---
+  with sub_pl2:
+    st.markdown("### 👷 Référentiel des Compagnons sur le Chantier")
+    st.write("Enregistrez les noms de vos ouvriers pour vous y retrouver.")
+
+    col_c1, col_c2 = st.columns([3, 1])
+    nouveau_comp = col_c1.text_input(
+        "Nom et spécialité du compagnon",
+        placeholder="Ex: Thomas (Pelliste), Marc (Chef d'équipe)...",
+    )
+    if col_c2.button("Ajouter l'ouvrier"):
+      if nouveau_comp:
+        if "compagnons" not in data_c:
+          data_c["compagnons"] = []
+        data_c["compagnons"].append(nouveau_comp)
+        st.success(f"{nouveau_comp} ajouté à l'équipe !")
+        st.rerun()
+
+    st.markdown("### 📋 Liste de l'équipe active")
+    comps = data_c.get("compagnons", [])
+    if not comps:
+      st.info("Aucun compagnon enregistré.")
+    else:
+      for idx, c in enumerate(comps):
+        col_name, col_del = st.columns([4, 1])
+        col_name.markdown(f"• **{c}**")
+        if col_del.button("Supprimer", key=f"del_comp_{idx}"):
+          comps.pop(idx)
+          st.rerun()
+
+  # --- SOUS-ONGLET 3 : SOUS-ATELIERS ---
+  with sub_pl3:
+    st.markdown("### 🛠️ Organisation des Sous-Ateliers de Chantier")
+    st.write(
+        "Divisez votre équipe en sous-ateliers (ex: Atelier Réseaux, Atelier"
+        " Finitions/Bordures) et affectez les compagnons."
+    )
+
+    with st.expander("➕ Créer un nouveau sous-atelier"):
+      nom_atelier = st.text_input(
+          "Nom de l'atelier (ex: Atelier Pose de Bordures)"
+      )
+      tache_liee = st.text_input("Tâche du planning associée")
+      
+      comps_dispos = data_c.get("compagnons", [])
+      membres_choisis = st.multiselect(
+          "Sélectionner les ouvriers pour cet atelier", options=comps_dispos
+      )
+
+      if st.button("Enregistrer le sous-atelier"):
+        if nom_atelier:
+          if "ateliers" not in data_c:
+            data_c["ateliers"] = []
+          data_c["ateliers"].append({
+              "nom": nom_atelier,
+              "membres": membres_choisis,
+              "tache_affectee": tache_liee,
+          })
+          st.success("Sous-atelier créé avec succès !")
+          st.rerun()
+
+    st.markdown("### 🏢 Ateliers Actifs & Dispatching des Effectifs")
+    ateliers = data_c.get("ateliers", [])
+    if not ateliers:
+      st.info("Aucun sous-atelier configuré.")
+    else:
+      for idx, at in enumerate(ateliers):
+        membres_str = (
+            ", ".join(at["membres"]) if at["membres"] else "Aucun membre affecté"
+        )
+        st.markdown(
+            f"""<div class='card'>
+            <b>🛠️ {at['nom']}</b><br>
+            • <b>Tâche liée :</b> {at['tache_affectee']}<br>
+            • <b>Compagnons affectés :</b> {membres_str}
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        if st.button("🗑️ Supprimer cet atelier", key=f"del_at_{idx}"):
+          ateliers.pop(idx)
+          st.rerun()
+
+# ==========================================
+# 3. PRÉPARATION & MÉTHODES
 # ==========================================
 elif module == "🛠️ Préparation & Méthodes":
   st.title("🛠️ Préparation de Chantier & Méthodes")
@@ -289,7 +492,6 @@ elif module == "🛠️ Préparation & Méthodes":
     for idx, p in enumerate(reversed(data_c["preparations"])):
       with st.expander(f"📋 {p['titre']}"):
         st.markdown(p["contenu"])
-        # Bouton passerelle vers le Dashboard
         if st.button(
             "📌 Épingler ce projet sur le Tableau de Bord",
             key=f"ping_{idx}",
@@ -302,12 +504,10 @@ elif module == "🛠️ Préparation & Méthodes":
               "Vérifier les pré-requis listés dans la note de préparation"
               f" '{p['titre']}'."
           )
-          st.success(
-              "✅ Projet épinglé avec succès sur votre Tableau de Bord !"
-          )
+          st.success("✅ Projet épinglé avec succès sur votre Tableau de Bord !")
 
 # ==========================================
-# 3. STOCKS & TABLEAU RÉCAPITULATIF BDL
+# 4. STOCKS & TABLEAU RÉCAPITULATIF BDL
 # ==========================================
 elif module == "📦 Stocks & Récapitulatif BDL":
   st.title("📦 Suivi des Stocks & Tableaux Récapitulatifs")
@@ -317,7 +517,6 @@ elif module == "📦 Stocks & Récapitulatif BDL":
   )
   st.markdown("---")
 
-  # Sous-onglets pour la gestion des stocks
   sub_s1, sub_s2 = st.tabs(
       ["📊 Tableau Récapitulatif Global", "⚙️ Gestion & Saisie BDL"]
   )
@@ -329,7 +528,6 @@ elif module == "📦 Stocks & Récapitulatif BDL":
           "Aucun matériau enregistré. Ajoutez-en via l'onglet de gestion."
       )
     else:
-      # Construction d'un tableau récapitulatif propre
       tableau_data = []
       for item, vals in data_c["stocks"].items():
         dispo = vals["recu"] - vals["pose"]
@@ -384,14 +582,13 @@ elif module == "📦 Stocks & Récapitulatif BDL":
           st.rerun()
 
 # ==========================================
-# 4. CALCULS & ATELIERS (AVEC GRAPHIQUES VISUELS)
+# 5. CALCULS & ATELIERS (AVEC GRAPHIQUES)
 # ==========================================
 elif module == "🧮 Calculs & Ateliers Métier":
   st.title("🧮 Centre de Calculs & Graphiques Métier")
   st.caption("Terrassement, enrobés, rabotage avec visualisation graphique.")
   st.markdown("---")
 
-  # Sous-onglets de calcul
   sub_c1, sub_c2, sub_c3 = st.tabs(
       [
           "🚛 Terrassement & Cubatures",
@@ -433,7 +630,6 @@ elif module == "🧮 Calculs & Ateliers Métier":
         </div>""",
         unsafe_allow_html=True,
     )
-    # Graphique visuel en barres sous Streamlit
     st.markdown("### 📊 Répartition Visuelle des Volumes")
     st.bar_chart({"Volume (m3)": {"En Place": v_pl, "Foisonné": v_fois}})
 
@@ -463,7 +659,12 @@ elif module == "🧮 Calculs & Ateliers Métier":
         unsafe_allow_html=True,
     )
     st.markdown("### 📊 Analyse Tonnage & Logistique Camions")
-    st.bar_chart({"Tonnage / Camions": {"Tonnage Total (t)": tonnage, "Nombre Camions (x25t)": nb_semis}})
+    st.bar_chart({
+        "Tonnage / Camions": {
+            "Tonnage Total (t)": tonnage,
+            "Nombre Camions (x25t)": nb_semis,
+        }
+    })
 
   with sub_c3:
     c1, c2 = st.columns(2)
@@ -487,7 +688,7 @@ elif module == "🧮 Calculs & Ateliers Métier":
     st.bar_chart({"Fraisage": {"Volume (m3)": v_fr, "Poids (Tonnes)": p_fr}})
 
 # ==========================================
-# 5. PARC & MATÉRIEL
+# 6. PARC & MATÉRIEL
 # ==========================================
 elif module == "🚜 Parc & Matériel":
   st.title("🚜 Référentiel Matériel & Coûts Horaires")
@@ -515,7 +716,7 @@ elif module == "🚜 Parc & Matériel":
         st.rerun()
 
 # ==========================================
-# 6. ASSISTANT EXPERT TERRAIN
+# 7. ASSISTANT EXPERT TERRAIN
 # ==========================================
 elif module == "💬 Assistant Expert Terrain":
   st.title("💬 Assistant Expert Terrain")
