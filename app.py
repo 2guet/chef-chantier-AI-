@@ -40,7 +40,7 @@ class TPExpertEngine:
         "Content-Type": "application/json",
     }
     payload = {
-        "model": "mistral-small-latest",
+        "model": "mistral-tiny",  # Modèle allégé pour éviter les saturations 429
         "messages": [{"role": "system", "content": system_prompt}]
         + messages_history,
         "temperature": 0.2,
@@ -51,7 +51,13 @@ class TPExpertEngine:
       )
       if res.status_code == 200:
         return res.json()["choices"][0]["message"]["content"]
-      return f"Erreur API ({res.status_code}): {res.text}"
+      elif res.status_code == 429:
+        return (
+            "⚠️ **Trop de requêtes (Erreur 429)** : L'API Mistral sature. Attends"
+            " 15 secondes et réessaie."
+        )
+      else:
+        return f"Erreur API ({res.status_code}): {res.text}"
     except Exception as e:
       return f"Erreur réseau : {str(e)}"
 
@@ -88,7 +94,7 @@ class TPExpertEngine:
         f"Nom du document : {nom_fichier}\nContexte/Question du chef de"
         f" chantier : {description_contexte}"
     )
-    return self._call(sys, [{"role": "user", "content": user_msg}] )
+    return self._call(sys, [{"role": "user", "content": user_msg}])
 
 
 # --- CLÉ API INTÉGRÉE EN DUR ---
