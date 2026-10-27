@@ -1,5 +1,3 @@
-import base64
-import json
 import os
 import requests
 import streamlit as st
@@ -12,7 +10,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Style CSS pour une ergonomie optimale sur Mobile & PC
 st.markdown(
     """
     <style>
@@ -46,7 +43,7 @@ class TPExpertEngine:
         "model": "mistral-small-latest",
         "messages": [{"role": "system", "content": system_prompt}]
         + messages_history,
-        "temperature": 0.2,  # Température basse pour privilégier la précision technique
+        "temperature": 0.2,
     }
     try:
       res = requests.post(
@@ -60,14 +57,11 @@ class TPExpertEngine:
 
   def preparer_chantier(self, type_travaux, contraintes, moyens):
     sys = (
-        "Tu es un conducteur de travaux principal TP senior (30 ans"
-        " d'expérience en terrassement, VRD, assainissement, ouvrages d'art)."
-        " Rédige une note de préparation de chantier ultra-précise et"
-        " professionnelle.\n\nREGLE D'OR ABSOLUE : Si les informations"
-        " fournies par l'utilisateur sont insuffisantes pour faire un calcul"
-        " exact ou donner un conseil sécurisé, dis clairement : '⚠️"
-        " Information manquante : il me manque [X] pour répondre précisément'"
-        " au lieu d'inventer des hypothèses sans fondement."
+        "Tu es un conducteur de travaux principal TP senior. Rédige une note de"
+        " préparation de chantier ultra-précise et professionnelle.\n\nREGLE"
+        " D'OR : Si les informations fournies sont insuffisantes, dis"
+        " clairement : '⚠️ Information manquante : il me manque [X] pour"
+        " répondre précisément' au lieu d'inventer."
     )
     user_msg = (
         f"Type de travaux : {type_travaux}\nContraintes terrain/météo :"
@@ -78,36 +72,25 @@ class TPExpertEngine:
   def discuter_probleme(self, historique_chat):
     sys = (
         "Tu es un conducteur de travaux TP chevronné. Tu réponds aux questions"
-        " du chef de chantier sur le terrain pour résoudre des problèmes"
-        " imprévus (méthodes, pannes, litiges, sécurité, règles de l'art,"
-        " réseaux DT-DICT, compactage).\n\nRÈGLES D'OR :\n1. Donne des conseils"
-        " pratiques, sécurisés et directement applicables sur le chantier.\n2."
-        " SI TU NE SAIS PAS ou si tu manques de données (nature de sol, cotes,"
-        " classe de granulats), DIS CLAIREMENT que tu n'as pas l'information et"
-        " demande au chef de chantier de vérifier l'élément exact."
+        " du chef de chantier sur le terrain.\n\nRÈGLES D'OR :\n1. Donne des"
+        " conseils pratiques et sécurisés.\n2. SI TU NE SAIS PAS ou si tu manques"
+        " de données, DIS CLAIREMENT que tu n'as pas l'information."
     )
     return self._call(sys, historique_chat)
 
   def analyser_document_ou_photo(self, nom_fichier, description_contexte):
     sys = (
         "Tu es un expert technique TP. Analyse la description et les données du"
-        " fichier transmis (plan, photo de fouille, CCTP, rapport G2,"
-        " attestation d'essais de plaque) et donne ton diagnostic technique,"
-        " les points de non-conformité potentiels et les recommandations pour"
-        " le chef de chantier."
-    )
-    user_msg = (
-        f"Nom du document : {nom_fichier}\nContexte/Question du chef de"
-        f" chantier : {description_contexte}"
+        " fichier transmis et donne ton diagnostic technique et tes"
+        " recommandations."
     )
     return self._call(sys, [{"role": "user", "content": user_msg}])
 
 
-# Initialisation Clé API
 API_KEY = os.getenv("MISTRAL_API_KEY", "METS_TA_CLE_MISTRAL_ICI")
 ia_engine = TPExpertEngine(API_KEY)
 
-# --- INITIALISATION DE LA SESSION STATE ---
+# --- INITIALISATION DE LA SESSION STATE (Global et dynamique) ---
 if "chantiers" not in st.session_state:
   st.session_state.chantiers = {
       "Réseau EU & EP ZAC Nord": {
@@ -127,17 +110,36 @@ if "chantiers" not in st.session_state:
                   "pose": 320,
                   "unite": "mL",
               },
-              "Grave Non Traitée 0/31.5": {
-                  "requis": 450,
-                  "recu": 300,
-                  "pose": 280,
-                  "unite": "Tonnes",
-              },
           },
       }
   }
 
-# --- NAVIGATION LATÉRALE (MENU PRINCIPAL) ---
+# Catalogue matériel dynamique stocké en session pour pouvoir l'enrichir/le modifier sans code
+if "catalog_engins" not in st.session_state:
+  st.session_state.catalog_engins = [
+      {
+          "nom": "Pelle chenilles 15-18 Tonnes",
+          "usage": "Terrassement principal, tranchées profondes, pose de réseaux",
+          "cout": 75,
+      },
+      {
+          "nom": "Bobcat / Chargeuse compacte",
+          "usage": "Nettoyage, régalage de matériaux, manutention sur petite surface",
+          "cout": 45,
+      },
+      {
+          "nom": "Camion 8x4 Bi-benne",
+          "usage": "Évacuation de déblais, approvisionnement en granulats (capacité 14m³)",
+          "cout": 85,
+      },
+      {
+          "nom": "Compacteur Tandem V2/V3",
+          "usage": "Compactage de fonds de forme et couches de roulement",
+          "cout": 55,
+      },
+  ]
+
+# --- NAVIGATION LATÉRALE ---
 st.sidebar.title("🏗️ Chef de Chantier AI")
 st.sidebar.caption("L'assistant terrain ultime TP")
 
@@ -181,7 +183,6 @@ data_chantier = st.session_state.chantiers[chantier_actif]
 if menu == "📊 Dashboard & Alertes":
   st.header(f"📊 Tableau de Bord : {chantier_actif}")
 
-  # Calcul des alertes de réapprovisionnement automatique
   alertes = []
   for item, vals in data_chantier["stocks"].items():
     stock_sur_chantier = vals["recu"] - vals["pose"]
@@ -220,65 +221,50 @@ if menu == "📊 Dashboard & Alertes":
   col3.metric("Articles suivis en stock", len(data_chantier["stocks"]))
 
 # ==========================================
-# 2. PRÉPARATION & MÉTHODES (Nouvel Onglet Requis !)
+# 2. PRÉPARATION & MÉTHODES
 # ==========================================
 elif menu == "🛠️ Préparation & Méthodes":
   st.header(f"🛠️ Préparation de Chantier : {chantier_actif}")
-  st.write(
-      "Soumets un projet à venir ou une nouvelle phase de chantier pour"
-      " obtenir l'analyse de méthodes, le dimensionnement d'atelier et les"
-      " cadences."
-  )
-
   type_travaux = st.text_input(
       "Type de travaux à réaliser",
-      placeholder="Ex: Pose de réseau d'eau potable PEHD 220 en bord de D900",
+      placeholder="Ex: Pose de réseau d'eau potable PEHD 220",
   )
   contraintes = st.text_area(
       "Contraintes spécifiques (Terrain, météo, circulation, réseaux)",
       placeholder=(
-          "Ex: Sol rocheux / présence d'eau à 1m50 / présence fibre optique /"
-          " circulation alternée nécessaire"
+          "Ex: Sol rocheux / présence d'eau / présence réseaux sensibles"
       ),
   )
   moyens = st.text_area(
-      "Moyens envisagés ou disponibles",
-      placeholder="Ex: 1 Pelle 15t, 1 Bobcat, 2 ouvriers, 1 dumper",
+      "Moyens envisagés", placeholder="Ex: 1 Pelle 15t, 2 ouvriers"
   )
 
   if st.button("Lancer l'analyse de préparation", type="primary"):
     if type_travaux:
-      with st.spinner("Analyse technique par l'ingénieur méthode..."):
+      with st.spinner("Analyse technique en cours..."):
         res = ia_engine.preparer_chantier(type_travaux, contraintes, moyens)
-        st.markdown("### 📋 Plan d'Attaque & Préconisations Méthodes :")
+        st.markdown("### 📋 Plan d'Attaque & Préconisations :")
         st.markdown(res)
     else:
       st.warning("Veuillez renseigner le type de travaux.")
 
 # ==========================================
-# 3. ASSISTANT TP (CHAT DIRECT & PROBLÈMES)
+# 3. ASSISTANT TP (CHAT DIRECT)
 # ==========================================
 elif menu == "💬 Assistant TP (Chat & Prob.)":
   st.header("💬 Assistant TP - Résolution de Problèmes en Direct")
-  st.info(
-      "💡 Pose n'importe quelle question terrain (panne, doute technique, sol"
-      " instable, litige). Si l'IA n'a pas les éléments nécessaires, elle te"
-      " le dira clairement sans inventer."
-  )
-
-  # Affichage de l'historique
   for msg in data_chantier["historique_chat"]:
     with st.chat_message(msg["role"]):
       st.markdown(msg["content"])
 
-  prompt = st.chat_input("Ex: J'ai un fond de fouille argileux détrempé, quelle couche de forme poser ?")
+  prompt = st.chat_input("Pose ta question terrain ici...")
   if prompt:
     data_chantier["historique_chat"].append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
 
     with st.chat_message("assistant"):
-      with st.spinner("Analyse technique en cours..."):
+      with st.spinner("Réflexion..."):
         reponse = ia_engine.discuter_probleme(data_chantier["historique_chat"])
         st.markdown(reponse)
         data_chantier["historique_chat"].append(
@@ -286,18 +272,16 @@ elif menu == "💬 Assistant TP (Chat & Prob.)":
         )
 
 # ==========================================
-# 4. STOCKS & MATÉRIAUX (Logique Automatique)
+# 4. STOCKS & MATÉRIAUX (Avec Suppression intégrée !)
 # ==========================================
 elif menu == "📦 Stocks & Matériaux":
   st.header(f"📦 Gestion des Stocks : {chantier_actif}")
 
-  st.subheader("➕ Ajouter un matériau / fourniture au marché")
+  st.subheader("➕ Ajouter un matériau au suivi")
   c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
-  nom_mat = c1.text_input("Nom du matériau (Ex: PEHD Ø300)")
-  req_mat = c2.number_input(
-      "Métré Total Prévu (Plans)", min_value=0.0, value=100.0
-  )
-  recu_mat = c3.number_input("Tonnage/Métré Reçu (BDL)", min_value=0.0, value=0.0)
+  nom_mat = c1.text_input("Nom du matériau (Ex: Regard béton 100x100)")
+  req_mat = c2.number_input("Métré Total Prévu", min_value=0.0, value=50.0)
+  recu_mat = c3.number_input("Reçu sur chantier", min_value=0.0, value=0.0)
   unite_mat = c4.selectbox("Unité", ["mL", "m3", "Tonnes", "Unités", "m2"])
 
   if st.button("Enregistrer le matériau"):
@@ -308,64 +292,63 @@ elif menu == "📦 Stocks & Matériaux":
           "pose": 0.0,
           "unite": unite_mat,
       }
-      st.success(f"{nom_mat} ajouté au suivi des stocks !")
+      st.success(f"{nom_mat} ajouté !")
       st.rerun()
 
   st.divider()
-  st.subheader("📋 Suivi de Consommation & Réceptions sur Chantier")
+  st.subheader("📋 Suivi, Consommation & Suppression")
 
-  for item, vals in list(data_chantier["stocks"].items()):
-    with st.expander(f"📦 {item} (Unité : {vals['unite']})", expanded=True):
-      c_recu, c_pose, c_etat = st.columns(3)
+  if not data_chantier["stocks"]:
+    st.write("Aucun matériau suivi pour l'instant.")
+  else:
+    for item, vals in list(data_chantier["stocks"].items()):
+      with st.expander(
+          f"📦 {item} (Stock dispo : {vals['recu'] - vals['pose']} {vals['unite']})"
+      ):
+        c_recu, c_pose, c_del = st.columns([2, 2, 1])
 
-      # Mettre à jour la quantité reçue
-      nouveau_recu = c_recu.number_input(
-          f"Reçu sur chantier (Cumul BDL)",
-          value=float(vals["recu"]),
-          key=f"recu_{item}",
-      )
-      # Mettre à jour la quantité posée
-      nouveau_pose = c_pose.number_input(
-          f"Posé / Consommé terrain",
-          value=float(vals["pose"]),
-          key=f"pose_{item}",
-      )
-
-      data_chantier["stocks"][item]["recu"] = nouveau_recu
-      data_chantier["stocks"][item]["pose"] = nouveau_pose
-
-      stock_dispo = nouveau_recu - nouveau_pose
-      manquant = vals["requis"] - nouveau_recu
-
-      st.write(
-          f"• **Stock physique disponible sur le terrain :** {stock_dispo}"
-          f" {vals['unite']}"
-      )
-      st.write(
-          f"• **Reste à poser pour finir le chantier :**"
-          f" {vals['requis'] - nouveau_pose} {vals['unite']}"
-      )
-
-      if (vals["requis"] - nouveau_pose) > stock_dispo:
-        st.error(
-            f"⚠️ ALERTE : Il vous manque {manquant} {vals['unite']} à commander"
-            " pour terminer la quantité prévue au plan !"
+        nouveau_recu = c_recu.number_input(
+            f"Reçu cumulé",
+            value=float(vals["recu"]),
+            key=f"recu_{item}",
         )
-      else:
-        st.success("✅ Stock terrain suffisant pour les travaux en cours.")
+        nouveau_pose = c_pose.number_input(
+            f"Posé / Consommé",
+            value=float(vals["pose"]),
+            key=f"pose_{item}",
+        )
+
+        data_chantier["stocks"][item]["recu"] = nouveau_recu
+        data_chantier["stocks"][item]["pose"] = nouveau_pose
+
+        stock_dispo = nouveau_recu - nouveau_pose
+        manquant = vals["requis"] - nouveau_recu
+
+        st.write(f"• Reste à poser : {vals['requis'] - nouveau_pose} {vals['unite']}")
+
+        if (vals["requis"] - nouveau_pose) > stock_dispo:
+          st.error(
+              f"⚠️ ALERTE : Manque {manquant} {vals['unite']} à commander !"
+          )
+        else:
+          st.success("✅ Stock suffisant.")
+
+        # Bouton de suppression propre du matériau
+        if c_del.button("🗑️ Supprimer", key=f"del_mat_{item}"):
+          del data_chantier["stocks"][item]
+          st.success(f"Matériau {item} supprimé avec succès !")
+          st.rerun()
 
 # ==========================================
 # 5. CALCULS CUBATURES & COMPACTAGE
 # ==========================================
 elif menu == "📐 Calculs Cubatures & Comp.":
   st.header("📐 Calculateur Technique Terrassement")
-
   tab_terr, tab_comp = st.tabs(
       ["🚛 Foisonnement & Camions", "🚜 Ratios de Compactage"]
   )
 
   with tab_terr:
-    st.subheader("Calculateur de Foisonnement & Nbre de Camions")
     v_en_place = st.number_input(
         "Volume en place (m³)", min_value=1.0, value=100.0
     )
@@ -378,125 +361,97 @@ elif menu == "📐 Calculs Cubatures & Comp.":
             "Rocher abattu (Foisonnement 50%)",
         ],
     )
-
     coeff_dict = {
         "Terre végétale (Foisonnement 20%)": 1.20,
         "Argile / Marne (Foisonnement 30%)": 1.30,
         "Grave / Sable (Foisonnement 15%)": 1.15,
         "Rocher abattu (Foisonnement 50%)": 1.50,
     }
-    coeff = coeff_dict[mat_type]
-    v_foisonne = v_en_place * coeff
-
+    v_foisonne = v_en_place * coeff_dict[mat_type]
     capa_camion = st.number_input(
         "Capacité utile du camion (m³)", min_value=1.0, value=10.0
     )
     nb_rotations = int(v_foisonne / capa_camion) + (
         1 if v_foisonne % capa_camion > 0 else 0
     )
-
-    st.success(f"**Volume foisonné à évacuer :** {v_foisonne:.1f} m³")
-    st.info(
-        f"**Nombre de rotations nécessaires :** {nb_rotations} rotations de"
-        f" {capa_camion} m³"
-    )
+    st.success(f"**Volume foisonné :** {v_foisonne:.1f} m³")
+    st.info(f"**Rotations nécessaires :** {nb_rotations} camions")
 
   with tab_comp:
-    st.subheader("Estimation des Passes de Compactage")
     epaisseur_couche = st.number_input(
-        "Épaisseur de la couche à compacter (cm)", min_value=5, value=20
+        "Épaisseur couche (cm)", min_value=5, value=20
     )
     object_q = st.selectbox(
-        "Objectif de compactage",
-        ["Q4 (Remblai courant)", "Q3 (Assise de chaussée / Tranchée sous voirie)"],
-    )
-    st.write(
-        f"Pour une couche de **{epaisseur_couche} cm** en objectif"
-        f" **{object_q}** :"
+        "Objectif",
+        ["Q4 (Remblai courant)", "Q3 (Assise de chaussée / Tranchée voirie)"],
     )
     if epaisseur_couche > 30:
-      st.warning(
-          "⚠️ Épaisseur importante : Prévoir un compacteur lourd (V3/V4) et"
-          " réaliser au moins 6 à 8 passes."
-      )
+      st.warning("⚠️ Prévoir compacteur lourd et 6 à 8 passes.")
     else:
-      st.info(
-          "Prévoir 4 à 6 passes croisées avec un compacteur de classe V2/V3."
-      )
+      st.info("Prévoir 4 à 6 passes croisées.")
 
 # ==========================================
-# 6. CATALOGUE MATÉRIEL
+# 6. CATALOGUE MATÉRIEL (Entièrement gérable depuis l'UI !)
 # ==========================================
 elif menu == "🚜 Catalogue Matériel":
   st.header("🚜 Catalogue Engins & Coûts Horaires")
-  st.write("Référentiel des machines, usages et coûts internes entreprise.")
 
-  catalog = [
-      {
-          "nom": "Pelle chenilles 15-18 Tonnes",
-          "usage": "Terrassement principal, tranchées profondes, pose de réseaux",
-          "cout": 75,
-      },
-      {
-          "nom": "Bobcat / Chargeuse compacte",
-          "usage": "Nettoyage, régalage de matériaux, manutention sur petite surface",
-          "cout": 45,
-      },
-      {
-          "nom": "Camion 8x4 Bi-benne",
-          "usage": "Évacuation de déblais, approvisionnement en granulats (capacité 14m³)",
-          "cout": 85,
-      },
-      {
-          "nom": "Compacteur Tandem V2/V3",
-          "usage": "Compactage de fonds de forme et couches de roulement",
-          "cout": 55,
-      },
-  ]
+  with st.expander("➕ Ajouter un nouvel engin au catalogue"):
+    nom_engin = st.text_input("Nom de la machine (Ex: Tombereau articulé)")
+    usage_engin = st.text_input(
+        "Usage principal (Ex: Transport de terre en grande distance)"
+    )
+    cout_engin = st.number_input(
+        "Coût horaire estimé (€/h)", min_value=0.0, value=65.0
+    )
+    if st.button("Ajouter l'engin au catalogue"):
+      if nom_engin:
+        st.session_state.catalog_engins.append({
+            "nom": nom_engin,
+            "usage": usage_engin,
+            "cout": cout_engin,
+        })
+        st.success(f"'{nom_engin}' ajouté avec succès !")
+        st.rerun()
 
-  for item in catalog:
-    with st.expander(f"⚙️ {item['nom']}"):
-      st.write(f"**Usage principal :** {item['usage']}")
-      cout_custom = st.number_input(
-          f"Coût horaire entreprise (€/h)",
-          value=float(item["cout"]),
-          key=f"cost_{item['nom']}",
-      )
-      st.caption(
-          f"Coût estimé pour une journée de 8h : {cout_custom * 8:.2f} € HT"
-      )
+  st.divider()
+  st.subheader("📋 Liste des engins enregistrés")
+
+  for idx, item in enumerate(st.session_state.catalog_engins):
+    with st.expander(f"⚙️ {item['nom']} ({item['cout']} €/h)"):
+      st.write(f"**Usage :** {item['usage']}")
+
+      # Modification directe ou suppression
+      c_del = st.columns(1)[0]
+      if st.button(f"🗑️ Supprimer l'engin", key=f"del_engin_{idx}"):
+        st.session_state.catalog_engins.pop(idx)
+        st.success("Engin supprimé !")
+        st.rerun()
 
 # ==========================================
-# 7. PLANS & PHOTOS (Multimodal)
+# 7. PLANS & PHOTOS
 # ==========================================
 elif menu == "📁 Plans & Photos":
-  st.header(f"📁 Analyse de Documents & Photos : {chantier_actif}")
-
+  st.header(f"📁 Analyse de Documents : {chantier_actif}")
   fichier = st.file_uploader(
-      "Glisser une photo de chantier ou un PDF",
-      type=["jpg", "png", "jpeg", "pdf"],
+      "Glisser une photo ou un PDF", type=["jpg", "png", "jpeg", "pdf"]
   )
-  question_doc = st.text_input(
-      "Question sur le document (ex: 'Vérifier la cote du tampon sur le plan')"
-  )
+  question_doc = st.text_input("Question sur le document")
 
-  if st.button("Analyser avec l'IA", type="primary"):
+  if st.button("Analyser", type="primary"):
     if fichier:
-      with st.spinner("Analyse par l'IA TP en cours..."):
+      with st.spinner("Analyse..."):
         res_doc = ia_engine.analyser_document_ou_photo(
             fichier.name, question_doc
         )
         data_chantier["documents"].append(
             {"nom": fichier.name, "analyse": res_doc}
         )
-        st.success("Fichier analysé et sauvegardé !")
-        st.markdown("### 🤖 Diagnostic de l'Expert :")
+        st.success("Analysé et sauvegardé !")
         st.markdown(res_doc)
     else:
-      st.warning("Sélectionne d'abord un fichier.")
+      st.warning("Choisis un fichier.")
 
-  st.divider()
-  st.subheader("Documents archivés sur ce chantier")
   for doc in data_chantier["documents"]:
     with st.expander(f"📎 {doc['nom']}"):
       st.markdown(doc["analyse"])
@@ -506,22 +461,19 @@ elif menu == "📁 Plans & Photos":
 # ==========================================
 elif menu == "🌙 Bilan de Journée":
   st.header(f"🌙 Rapport Journalier : {chantier_actif}")
-  st.info("🎙️ Utile le micro de ton clavier iPhone pour tout dicter en vrac.")
-
-  debrief = st.text_area("Compte-rendu brut de la journée", height=150)
+  debrief = st.text_area("Débrief brut de la journée", height=150)
 
   if st.button("Générer le rapport structuré", type="primary"):
     if debrief:
-      with st.spinner("Rédaction du rapport pro..."):
+      with st.spinner("Rédaction..."):
         sys_rap = (
-            "Tu es un chef de chantier TP. Rédige un rapport de fin de journée"
-            " structuré : 1. Météo & Conditions, 2. Travaux réalisés du jour,"
-            " 3. Consommation de matériaux, 4. Imprévus/Pannes, 5. Programme pour"
-            " demain."
+            "Tu es un chef de chantier TP. Rédige un rapport structuré : 1."
+            " Météo, 2. Travaux réalisés, 3. Consommation, 4. Imprévus, 5."
+            " Programme demain."
         )
         rap = ia_engine._call(sys_rap, [{"role": "user", "content": debrief}])
         data_chantier["rapports"].append(rap)
-        st.success("Rapport archivé avec succès !")
+        st.success("Rapport archivé !")
         st.markdown(rap)
     else:
-      st.warning("Écris ou dicte d'abord le bilan de la journée.")
+      st.warning("Écris ton bilan.")
