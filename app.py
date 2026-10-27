@@ -8,25 +8,25 @@ st.set_page_config(
     page_title="Chef de Chantier TP - Pro OS",
     page_icon="🏗️",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
-# Design "Best-Seller BTP" : Dark mode épuré, typographie moderne, finitions industrielles
+# Design "Obsidienne & Carbone" : Ultra-pro, mat, contrasté, touches jaune chantier (#f59e0b)
 st.markdown(
     """
     <style>
-    .main { background-color: #0b0f19; padding: 1rem; color: #f8fafc; }
-    .stButton button { width: 100%; border-radius: 8px; font-weight: 600; height: 2.8em; background-color: #f59e0b; color: #0b0f19; border: none; }
+    .main { background-color: #07090e; padding: 1.2rem; color: #f1f5f9; }
+    .stButton button { width: 100%; border-radius: 6px; font-weight: 600; height: 2.8em; background-color: #f59e0b; color: #07090e; border: none; }
     .stButton button:hover { background-color: #d97706; }
-    .card { background-color: #111827; padding: 20px; border-radius: 12px; border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); margin-bottom: 15px; }
-    .alert-card { background-color: #450a0a; border: 1px solid #991b1b; padding: 15px; border-radius: 8px; color: #f87171; margin-bottom: 15px; font-weight: 600; }
-    .success-card { background-color: #064e3b; border: 1px solid #065f46; padding: 15px; border-radius: 8px; color: #34d399; margin-bottom: 15px; font-weight: 600; }
-    h1, h2, h3 { color: #ffffff !important; }
-    p, span, label { color: #9ca3af !important; }
-    /* Style pour les onglets principaux */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: #111827; padding: 6px; border-radius: 10px; }
-    .stTabs [data-baseweb="tab"] { height: 40px; border-radius: 6px; color: #9ca3af; font-weight: 600; }
-    .stTabs [aria-selected="true"] { background-color: #f59e0b !important; color: #0b0f19 !important; }
+    .card { background-color: #0f172a; padding: 18px; border-radius: 10px; border: 1px solid #1e293b; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); margin-bottom: 12px; }
+    .alert-card { background-color: #450a0a; border: 1px solid #991b1b; padding: 14px; border-radius: 8px; color: #f87171; margin-bottom: 12px; font-weight: 600; }
+    .success-card { background-color: #064e3b; border: 1px solid #065f46; padding: 14px; border-radius: 8px; color: #34d399; margin-bottom: 12px; font-weight: 600; }
+    h1, h2, h3 { color: #ffffff !important; letter-spacing: -0.5px; }
+    p, span, label { color: #94a3b8 !important; }
+    /* Onglets principaux hauts */
+    .stTabs [data-baseweb="tab-list"] { gap: 6px; background-color: #0f172a; padding: 6px; border-radius: 8px; border: 1px solid #1e293b; }
+    .stTabs [data-baseweb="tab"] { height: 38px; border-radius: 6px; color: #94a3b8; font-weight: 600; font-size: 14px; }
+    .stTabs [aria-selected="true"] { background-color: #f59e0b !important; color: #07090e !important; }
     </style>
 """,
     unsafe_allow_html=True,
@@ -199,7 +199,7 @@ st.title(f"🏗️ {chantier_actif}")
 st.markdown("---")
 
 # ==========================================
-# NAVIGATION PRINCIPALE PAR ONGLETS HAUT (STYLE BEST-SELLER)
+# NAVIGATION PRINCIPALE PAR ONGLETS HAUT
 # ==========================================
 (
     tab_dash,
