@@ -2,7 +2,7 @@ import os
 import requests
 import streamlit as st
 
-# --- CONFIGURATION DE LA PAGE PRO ---
+# --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(
     page_title="Chef de Chantier TP - Pro OS",
     page_icon="🏗️",
@@ -10,17 +10,17 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Design industriel, sombre, lisible et ultra-pro
+# Design "BTP Premium" : Moderne, épuré, contrasté, touches jaune chantier (#f59e0b) et acier
 st.markdown(
     """
     <style>
-    .main { background-color: #0e1117; padding: 1.5rem; }
-    .stButton button { width: 100%; border-radius: 6px; font-weight: 600; height: 2.8em; background-color: #2563eb; color: white; border: none; }
-    .stButton button:hover { background-color: #1d4ed8; }
-    .card { background-color: #161b22; padding: 20px; border-radius: 10px; border: 1px solid #30363d; margin-bottom: 15px; }
-    .alert-card { background-color: #450a0a; border: 1px solid #991b1b; padding: 15px; border-radius: 8px; color: #f87171; margin-bottom: 15px; font-weight: 600; }
-    .success-card { background-color: #064e3b; border: 1px solid #065f46; padding: 15px; border-radius: 8px; color: #34d399; margin-bottom: 15px; font-weight: 600; }
-    h1, h2, h3 { color: #f0f6fc; }
+    .main { background-color: #f8fafc; padding: 1.5rem; }
+    .stButton button { width: 100%; border-radius: 6px; font-weight: 600; height: 2.8em; background-color: #1e293b; color: white; border: none; }
+    .stButton button:hover { background-color: #334155; }
+    .card { background-color: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 15px; }
+    .alert-card { background-color: #fef2f2; border: 1px solid #fca5a5; padding: 15px; border-radius: 8px; color: #991b1b; margin-bottom: 15px; font-weight: 600; }
+    .success-card { background-color: #f0fdf4; border: 1px solid #86efac; padding: 15px; border-radius: 8px; color: #166534; margin-bottom: 15px; font-weight: 600; }
+    h1, h2, h3 { color: #0f172a; }
     </style>
 """,
     unsafe_allow_html=True,
@@ -65,11 +65,10 @@ class TPExpertEngine:
   def preparer_chantier(self, type_travaux, contraintes, moyens):
     sys = (
         "Tu es un conducteur de travaux principal TP senior. Rédige une note de"
-        " préparation de chantier ultra-précise, technique et structurée.\n\nREGLE"
-        " D'OR STRICTE : Si les informations fournies sont insuffisantes pour"
-        " donner des chiffres ou des cadences exactes, écris clairement :"
-        " '⚠️ Information manquante : il me manque [X] pour répondre"
-        " précisément' au lieu d'inventer des hypothèses."
+        " préparation de chantier ultra-précise et structurée.\n\nREGLE D'OR"
+        " STRICTE : Si les informations fournies sont insuffisantes, écris"
+        " clairement : '⚠️ Information manquante : il me manque [X] pour"
+        " répondre précisément'."
     )
     user_msg = (
         f"Type de travaux : {type_travaux}\nContraintes terrain :"
@@ -81,9 +80,8 @@ class TPExpertEngine:
     sys = (
         "Tu es un conducteur de travaux TP chevronné. Tu réponds aux questions"
         " techniques du chef de chantier.\n\nRÈGLES D'OR :\n1. Donne des"
-        " solutions de terrain pratiques et sécurisées.\n2. SI TU NE SAIS PAS ou"
-        " si tu manques de données critiques, DIS CLAIREMENT que tu n'as pas"
-        " l'information."
+        " solutions pratiques et sécurisées.\n2. SI TU NE SAIS PAS ou si tu manques"
+        " de données critiques, DIS CLAIREMENT que tu n'as pas l'information."
     )
     return self._call(sys, historique_chat)
 
@@ -94,26 +92,7 @@ ia_engine = TPExpertEngine(API_KEY)
 
 # --- INITIALISATION DE LA SESSION ---
 if "chantiers" not in st.session_state:
-  st.session_state.chantiers = {
-      "Assistant TP (Chantier Actif)": {
-          "historique_chat": [],
-          "preparations": [],
-          "stocks": {
-              "Tuyau PEHD Ø300": {
-                  "requis": 390,
-                  "recu": 200,
-                  "pose": 80,
-                  "unite": "mL",
-              },
-              "Bordure T2": {
-                  "requis": 500,
-                  "recu": 500,
-                  "pose": 320,
-                  "unite": "mL",
-              },
-          },
-      }
-  }
+  st.session_state.chantiers = {}
 
 if "catalog_engins" not in st.session_state:
   st.session_state.catalog_engins = [
@@ -139,34 +118,66 @@ if "catalog_engins" not in st.session_state:
       },
   ]
 
-# --- MENU LATÉRAL PRO & ÉPURÉ ---
+# ==========================================
+# GESTION DES CHANTIERS & SÉCURITÉ (PAS DE DÉFAUT)
+# ==========================================
 st.sidebar.title("🏗️ CHEF DE CHANTIER OS")
-st.sidebar.caption("Version Pro Terrain")
+st.sidebar.caption("Interface Pro Terrain")
+st.sidebar.markdown("---")
 
+liste_chantiers = list(st.session_state.chantiers.keys())
+
+if not liste_chantiers:
+  st.sidebar.warning("⚠️ Aucun chantier actif. Créez-en un pour commencer.")
+  nouveau_c_init = st.sidebar.text_input(
+      "Nouveau Chantier", placeholder="Ex: ZAC Nord - VRD"
+  )
+  if st.sidebar.button("Créer le chantier"):
+    if nouveau_c_init:
+      st.session_state.chantiers[nouveau_c_init] = {
+          "historique_chat": [],
+          "preparations": [],
+          "stocks": {},
+          "projet_infos": "Aucune note de préparation validée pour l'instant.",
+          "achats_urgents": "RAS",
+          "notes_rapides": "",
+      }
+      st.rerun()
+  st.title("🏗️ Bienvenue sur votre Assistant Chef de Chantier")
+  st.info(
+      "👈 Veuillez créer votre premier chantier dans le menu latéral pour"
+      " accéder aux modules."
+  )
+  st.stop()
+
+# Sélection obligatoire
 chantier_actif = st.sidebar.selectbox(
-    "📍 Chantier en cours", options=list(st.session_state.chantiers.keys())
+    "📍 Sélectionner un chantier", options=liste_chantiers
 )
 
-nouveau_c = st.sidebar.text_input(
-    "➕ Ajouter un chantier", placeholder="Nom du chantier..."
-)
-if st.sidebar.button("Créer") and nouveau_c:
-  st.session_state.chantiers[nouveau_c] = {
-      "historique_chat": [],
-      "preparations": [],
-      "stocks": {},
-  }
-  st.rerun()
+# Option d'ajout d'un nouveau chantier
+with st.sidebar.expander("➕ Créer un autre chantier"):
+  autre_c = st.text_input("Nom du chantier", placeholder="Nom...")
+  if st.button("Ajouter"):
+    if autre_c:
+      st.session_state.chantiers[autre_c] = {
+          "historique_chat": [],
+          "preparations": [],
+          "stocks": {},
+          "projet_infos": "Aucune note validée.",
+          "achats_urgents": "RAS",
+          "notes_rapides": "",
+      }
+      st.rerun()
 
-st.sidebar.divider()
-
+st.sidebar.markdown("---")
 module = st.sidebar.radio(
-    "Navigation Pro",
+    "🧭 Navigation Principale",
     [
         "⚡ Tableau de Bord",
         "🛠️ Préparation & Méthodes",
-        "📦 Stocks & Matériaux",
-        "🧮 Calculs & Ateliers (TP / Enrobés)",
+        "📦 Stocks & Récapitulatif BDL",
+        "🧮 Calculs & Ateliers Métier",
         "🚜 Parc & Matériel",
         "💬 Assistant Expert Terrain",
     ],
@@ -175,13 +186,45 @@ module = st.sidebar.radio(
 data_c = st.session_state.chantiers[chantier_actif]
 
 # ==========================================
-# 1. TABLEAU DE BORD (SYNTHÈSE DIRECTE)
+# 1. TABLEAU DE BORD (SYNTHÈSE, BLOC NOTES & PASSERELLE)
 # ==========================================
 if module == "⚡ Tableau de Bord":
-  st.title(f"⚡ Synthèse : {chantier_actif}")
+  st.title(f"⚡ Tableau de Bord : {chantier_actif}")
   st.markdown("---")
 
-  # Analyse des alertes stocks
+  # Bloc récapitulatif issu de la Préparation
+  col_info1, col_info2 = st.columns(2)
+  with col_info1:
+    st.markdown(
+        f"""<div class='card'>
+        <b>📋 Résumé du Futur Projet Validé :</b><br>
+        {data_c.get('projet_infos', 'Aucune note injectée.')}
+        </div>""",
+        unsafe_allow_html=True,
+    )
+  with col_info2:
+    st.markdown(
+        f"""<div class='card'>
+        <b>🛒 À commander / Pré-requis d'attaque :</b><br>
+        {data_c.get('achats_urgents', 'Aucun pré-requis spécifié.')}
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+  # Bloc-notes Rapide Terrain
+  st.markdown("### 📝 Bloc-Notes Rapide Terrain")
+  notes_actuelles = data_c.get("notes_rapides", "")
+  nouveau_texte_notes = st.text_area(
+      "Notes instantanées (sauvegarde automatique en direct)",
+      value=notes_actuelles,
+      height=100,
+  )
+  if nouveau_texte_notes != notes_actuelles:
+    data_c["notes_rapides"] = nouveau_texte_notes
+
+  st.markdown("---")
+  st.markdown("### 🚨 Alertes Stocks & Flux")
+
   alertes = []
   for item, vals in data_c["stocks"].items():
     dispo = vals["recu"] - vals["pose"]
@@ -206,19 +249,14 @@ if module == "⚡ Tableau de Bord":
         unsafe_allow_html=True,
     )
 
-  col1, col2, col3 = st.columns(3)
-  col1.metric("Articles suivis en stock", len(data_c["stocks"]))
-  col2.metric("Notes de prépa enregistrées", len(data_c["preparations"]))
-  col3.metric("Engins au catalogue", len(st.session_state.catalog_engins))
-
 # ==========================================
-# 2. PRÉPARATION & MÉTHODES (IA EXPERT)
+# 2. PRÉPARATION & MÉTHODES (AVEC PASSERELLE DASHBOARD)
 # ==========================================
 elif module == "🛠️ Préparation & Méthodes":
   st.title("🛠️ Préparation de Chantier & Méthodes")
   st.caption(
-      "Générez une note d'ingénierie méthodes avec validation des contraintes"
-      " terrain."
+      "Générez une note d'ingénierie et injectez-la directement sur le tableau"
+      " de bord."
   )
   st.markdown("---")
 
@@ -247,46 +285,89 @@ elif module == "🛠️ Préparation & Méthodes":
       st.warning("Veuillez renseigner le type de travaux.")
 
   if data_c["preparations"]:
-    st.markdown("### 📚 Historique des notes de préparation")
-    for p in reversed(data_c["preparations"]):
+    st.markdown("### 📚 Historique & Validation pour le Tableau de Bord")
+    for idx, p in enumerate(reversed(data_c["preparations"])):
       with st.expander(f"📋 {p['titre']}"):
         st.markdown(p["contenu"])
+        # Bouton passerelle vers le Dashboard
+        if st.button(
+            "📌 Épingler ce projet sur le Tableau de Bord",
+            key=f"ping_{idx}",
+        ):
+          data_c["projet_infos"] = (
+              f"<b>Projet :</b> {p['titre']}<br><b>Analyse validée par"
+              " l'IA</b>"
+          )
+          data_c["achats_urgents"] = (
+              "Vérifier les pré-requis listés dans la note de préparation"
+              f" '{p['titre']}'."
+          )
+          st.success(
+              "✅ Projet épinglé avec succès sur votre Tableau de Bord !"
+          )
 
 # ==========================================
-# 3. STOCKS & MATÉRIAUX (SUIVI DYNAMIQUE)
+# 3. STOCKS & TABLEAU RÉCAPITULATIF BDL
 # ==========================================
-elif module == "📦 Stocks & Matériaux":
-  st.title("📦 Suivi des Stocks & Fournitures")
+elif module == "📦 Stocks & Récapitulatif BDL":
+  st.title("📦 Suivi des Stocks & Tableaux Récapitulatifs")
   st.caption(
-      "Gestion des métrés prévisionnels, livraisons BDL et alertes automatiques"
-      " chantier."
+      "Visualisez en un clin d'œil l'état complet du chantier (métrés plans,"
+      " reçus BDL, stock terrain et restes à commander)."
   )
   st.markdown("---")
 
-  with st.expander("➕ Ajouter un matériau au suivi chantier"):
-    c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
-    n_mat = c1.text_input("Désignation (Ex: Regard béton)")
-    req_m = c2.number_input("Métré plan", min_value=0.0, value=50.0)
-    rec_m = c3.number_input("Reçu BDL", min_value=0.0, value=0.0)
-    uni_m = c4.selectbox("Unité", ["mL", "m3", "Tonnes", "Unités", "m2"])
-    if st.button("Enregistrer"):
-      if n_mat:
-        data_c["stocks"][n_mat] = {
-            "requis": req_m,
-            "recu": rec_m,
-            "pose": 0.0,
-            "unite": uni_m,
-        }
-        st.success("Ajouté avec succès.")
-        st.rerun()
+  # Sous-onglets pour la gestion des stocks
+  sub_s1, sub_s2 = st.tabs(
+      ["📊 Tableau Récapitulatif Global", "⚙️ Gestion & Saisie BDL"]
+  )
 
-  st.markdown("### 📊 État des stocks en temps réel")
-  if not data_c["stocks"]:
-    st.info("Aucun matériau suivi.")
-  else:
+  with sub_s1:
+    st.markdown("### 📋 Tableau de Bord des Matériaux")
+    if not data_c["stocks"]:
+      st.info(
+          "Aucun matériau enregistré. Ajoutez-en via l'onglet de gestion."
+      )
+    else:
+      # Construction d'un tableau récapitulatif propre
+      tableau_data = []
+      for item, vals in data_c["stocks"].items():
+        dispo = vals["recu"] - vals["pose"]
+        reste = vals["requis"] - vals["pose"]
+        manque = max(0, vals["requis"] - vals["recu"])
+        tableau_data.append({
+            "Matériau": item,
+            "Prévu Plan": f"{vals['requis']} {vals['unite']}",
+            "Reçu BDL": f"{vals['recu']} {vals['unite']}",
+            "Posé / Consommé": f"{vals['pose']} {vals['unite']}",
+            "Stock Terrain Dispo": f"{dispo} {vals['unite']}",
+            "À Commander d'Urgence": f"{manque} {vals['unite']}",
+        })
+      st.dataframe(tableau_data, use_container_width=True)
+
+  with sub_s2:
+    with st.expander("➕ Ajouter un matériau au suivi chantier"):
+      c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
+      n_mat = c1.text_input("Désignation (Ex: Regard béton)")
+      req_m = c2.number_input("Métré plan", min_value=0.0, value=50.0)
+      rec_m = c3.number_input("Reçu BDL", min_value=0.0, value=0.0)
+      uni_m = c4.selectbox("Unité", ["mL", "m3", "Tonnes", "Unités", "m2"])
+      if st.button("Enregistrer"):
+        if n_mat:
+          data_c["stocks"][n_mat] = {
+              "requis": req_m,
+              "recu": rec_m,
+              "pose": 0.0,
+              "unite": uni_m,
+          }
+          st.success("Ajouté avec succès.")
+          st.rerun()
+
+    st.markdown("### ✏️ Mises à jour journalières")
     for item, vals in list(data_c["stocks"].items()):
       with st.expander(
-          f"📦 {item} (Dispo : {vals['recu'] - vals['pose']} {vals['unite']})"
+          f"📦 {item} (Dispo terrain : {vals['recu'] - vals['pose']}"
+          f" {vals['unite']})"
       ):
         c_r, c_p, c_d = st.columns([2, 2, 1])
         nr = c_r.number_input(
@@ -298,42 +379,28 @@ elif module == "📦 Stocks & Matériaux":
         data_c["stocks"][item]["recu"] = nr
         data_c["stocks"][item]["pose"] = np
 
-        dispo = nr - np
-        reste = vals["requis"] - np
-        manque = vals["requis"] - nr
-
-        st.write(f"• Reste à poser pour finir : {reste} {vals['unite']}")
-        if reste > dispo and manque > 0:
-          st.error(f"⚠️ Alerte : Il manque {manque} {vals['unite']} à commander.")
-        else:
-          st.success("✅ Stock suffisant.")
-
         if c_d.button("🗑️ Supprimer", key=f"del_{item}"):
           del data_c["stocks"][item]
           st.rerun()
 
 # ==========================================
-# 4. CALCULS & ATELIERS (TERRASSEMENT & ENROBÉS)
+# 4. CALCULS & ATELIERS (AVEC GRAPHIQUES VISUELS)
 # ==========================================
-elif module == "🧮 Calculs & Ateliers (TP / Enrobés)":
-  st.title("🧮 Centre de Calculs & Ateliers Métier")
-  st.caption(
-      "Terrassement, cubatures, rotations camions, enrobés et ateliers de"
-      " fraisage."
-  )
+elif module == "🧮 Calculs & Ateliers Métier":
+  st.title("🧮 Centre de Calculs & Graphiques Métier")
+  st.caption("Terrassement, enrobés, rabotage avec visualisation graphique.")
   st.markdown("---")
 
-  mode_calc = st.selectbox(
-      "Sélectionner le type de calcul",
+  # Sous-onglets de calcul
+  sub_c1, sub_c2, sub_c3 = st.tabs(
       [
-          "🚛 Terrassement & Foisonnement",
-          "🛣️ Pose d'Enrobés & Tonnages",
+          "🚛 Terrassement & Cubatures",
+          "🛣️ Enrobés & Tonnages",
           "⚙️ Rabotage & Fraisage",
-      ],
+      ]
   )
-  st.markdown("---")
 
-  if "Terrassement" in mode_calc:
+  with sub_c1:
     c1, c2 = st.columns(2)
     v_pl = c1.number_input("Volume en place (m³)", min_value=1.0, value=200.0)
     sol_t = c2.selectbox(
@@ -360,13 +427,17 @@ elif module == "🧮 Calculs & Ateliers (TP / Enrobés)":
     st.markdown(
         f"""<div class='card'>
         <b>Résultats Terrassement :</b><br>
+        • Volume en place : <b>{v_pl} m³</b><br>
         • Volume foisonné à évacuer : <b>{v_fois:.1f} m³</b><br>
         • Rotations de camions ({cap_c} m³) : <b>{rot} rotations</b>
         </div>""",
         unsafe_allow_html=True,
     )
+    # Graphique visuel en barres sous Streamlit
+    st.markdown("### 📊 Répartition Visuelle des Volumes")
+    st.bar_chart({"Volume (m3)": {"En Place": v_pl, "Foisonné": v_fois}})
 
-  elif "Enrobés" in mode_calc:
+  with sub_c2:
     c1, c2 = st.columns(2)
     surf = c1.number_input("Surface du chantier (m²)", min_value=10.0, value=1500.0)
     ep = c2.number_input("Épaisseur moyenne (cm)", min_value=1.0, value=6.0)
@@ -387,12 +458,14 @@ elif module == "🧮 Calculs & Ateliers (TP / Enrobés)":
         <b>Résultats Enrobés :</b><br>
         • Tonnage total estimé : <b>{tonnage:.1f} Tonnes</b><br>
         • Semi-remorques (25t) nécessaires : <b>{nb_semis} camions</b><br>
-        • <b>Dimensionnement d'atelier :</b> {"⚠️ Gros tonnage (>300t) : Prévoir un alimentateur + atelier de compactage renforcé (1 pneus + 1 tandem)." if tonnage > 300 else "✅ Chantier standard : 1 finisseur et 1 atelier classique suffisent."}
+        • <b>Dimensionnement d'atelier :</b> {"⚠️ Gros tonnage (>300t) : Prévoir un alimentateur + compactage renforcé." if tonnage > 300 else "✅ Chantier standard : 1 finisseur + atelier classique."}
         </div>""",
         unsafe_allow_html=True,
     )
+    st.markdown("### 📊 Analyse Tonnage & Logistique Camions")
+    st.bar_chart({"Tonnage / Camions": {"Tonnage Total (t)": tonnage, "Nombre Camions (x25t)": nb_semis}})
 
-  else:
+  with sub_c3:
     c1, c2 = st.columns(2)
     s_rab = c1.number_input("Surface à raboter (m²)", min_value=10.0, value=1000.0)
     p_rab = c2.number_input(
@@ -406,17 +479,19 @@ elif module == "🧮 Calculs & Ateliers (TP / Enrobés)":
         <b>Résultats Rabotage :</b><br>
         • Volume de fraiseat : <b>{v_fr:.1f} m³</b><br>
         • Poids total des déblais : <b>{p_fr:.1f} Tonnes</b><br>
-        • <b>Choix de raboteuse :</b> {"⚠️ Grande surface (>1500m²) : Prévoir une W2000 ou W2500 grand rendement." if s_rab > 1500 else "✅ Raboteuse type W1500 adaptée pour une journée de production."}
+        • <b>Choix de raboteuse :</b> {"⚠️ Grande surface (>1500m²) : Prévoir une W2000 ou W2500." if s_rab > 1500 else "✅ Raboteuse type W1500 adaptée."}
         </div>""",
         unsafe_allow_html=True,
     )
+    st.markdown("### 📊 Volume & Poids du Fraiseat")
+    st.bar_chart({"Fraisage": {"Volume (m3)": v_fr, "Poids (Tonnes)": p_fr}})
 
 # ==========================================
 # 5. PARC & MATÉRIEL
 # ==========================================
 elif module == "🚜 Parc & Matériel":
   st.title("🚜 Référentiel Matériel & Coûts Horaires")
-  st.caption("Gestion des engins, pelles, camions et coûts internes entreprise.")
+  st.caption("Gestion des engins et coûts internes entreprise.")
   st.markdown("---")
 
   with st.expander("➕ Ajouter un engin au catalogue"):
@@ -440,7 +515,7 @@ elif module == "🚜 Parc & Matériel":
         st.rerun()
 
 # ==========================================
-# 6. ASSISTANT EXPERT TERRAIN (CHAT DIRECT)
+# 6. ASSISTANT EXPERT TERRAIN
 # ==========================================
 elif module == "💬 Assistant Expert Terrain":
   st.title("💬 Assistant Expert Terrain")
